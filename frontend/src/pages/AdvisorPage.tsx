@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { recommendationApi } from "../api/recommendationApi";
+import { mutualFundApi } from "../api/mutualFundApi";
 import { watchlistApi } from "../api/watchlistApi";
 import { ErrorAlert } from "../components/common/ErrorAlert";
 import {
@@ -9,6 +10,7 @@ import {
   InvestmentForm,
   type InvestmentFormValues,
 } from "../components/investment-form/InvestmentForm";
+import type { WatchlistCounts } from "../components/investment-form/StockUniversePicker";
 import { DisclaimerBanner } from "../components/layout/DisclaimerBanner";
 import { PageHeader } from "../components/layout/PageHeader";
 import { ActiveModelSelector } from "../components/model-picker/ActiveModelSelector";
@@ -18,27 +20,26 @@ import { useProviderConnections } from "../context/ProviderConnectionsContext";
 import type { ProviderId } from "../types/provider.types";
 import type { RecommendationRequest, RecommendationResponse } from "../types/recommendation.types";
 import { formatInr } from "../utils/displayFormatters";
-import { RISK_LEVEL_LABELS, describeInvestmentMode } from "../utils/investmentLabels";
+import { ASSET_MIX_LABELS, RISK_LEVEL_LABELS, describeInvestmentMode } from "../utils/investmentLabels";
 
-const UNIVERSE_LABELS = { default: "24 large NSE stocks", watchlist: "My watchlist", custom: "Custom list" };
+const UNIVERSE_LABELS = { default: "Built-in list", watchlist: "My watchlist", custom: "Custom stocks" };
 
 export function AdvisorPage() {
   const { activeProviderId, activeModel, activeStatus } = useProviderConnections();
   const [formValues, setFormValues] = useState<InvestmentFormValues>(INITIAL_INVESTMENT_FORM_VALUES);
-  const [watchlistSize, setWatchlistSize] = useState(0);
+  const [watchlistCounts, setWatchlistCounts] = useState<WatchlistCounts>({ stocks: 0, funds: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    watchlistApi
-      .list()
-      .then((items) => setWatchlistSize(items.length))
-      .catch(() => setWatchlistSize(0));
+    Promise.all([watchlistApi.list(), mutualFundApi.listWatchlist()])
+      .then(([stocks, funds]) => setWatchlistCounts({ stocks: stocks.length, funds: funds.length }))
+      .catch(() => setWatchlistCounts({ stocks: 0, funds: 0 }));
   }, []);
 
-  const validationError = validateForm(formValues, watchlistSize);
+  const validationError = validateForm(formValues, watchlistCounts);
   const blocker =
     validationError ?? (activeStatus && !activeStatus.is_ready ? "Connect an AI model to continue." : null);
   const canSubmit = !isSubmitting && !blocker && Boolean(activeStatus?.is_ready);
@@ -65,18 +66,22 @@ export function AdvisorPage() {
       <PageHeader
         eyebrow="AI allocation agent"
         title="Advisor"
-        description="Set your amount and risk level. The agent analyses a year of prices, fundamentals and news, then proposes a diversified split with its reasoning."
+        description="Choose stocks, mutual funds or a mix, then set your amount and risk level. The agent analyses prices, fundamentals, fund track records and news, then proposes a diversified split with its reasoning."
       />
       <DisclaimerBanner />
 
       <div className="advisor-layout">
-        <InvestmentForm values={formValues} watchlistSize={watchlistSize} onChange={setFormValues} />
+        <InvestmentForm values={formValues} watchlistCounts={watchlistCounts} onChange={setFormValues} />
 
         <aside className="card advisor-run-panel">
           <h2 className="card__title">AI model</h2>
           <ActiveModelSelector />
 
           <dl className="run-summary">
+            <div>
+              <dt>Invest in</dt>
+              <dd>{ASSET_MIX_LABELS[formValues.assetMix]}</dd>
+            </div>
             <div>
               <dt>Mode</dt>
               <dd>
@@ -95,7 +100,7 @@ export function AdvisorPage() {
               <dd>{RISK_LEVEL_LABELS[formValues.riskLevel]}</dd>
             </div>
             <div>
-              <dt>Stocks</dt>
+              <dt>Choose from</dt>
               <dd>{UNIVERSE_LABELS[formValues.universeSource]}</dd>
             </div>
           </dl>
@@ -114,7 +119,13 @@ export function AdvisorPage() {
 
       <div ref={resultsRef} className="advisor-results">
         {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
-        {isSubmitting && <RecommendationProgress providerName={activeStatus?.display_name ?? "AI"} />}
+        {isSubmitting && (
+          <RecommendationProgress
+            providerId={activeProviderId}
+            providerName={activeStatus?.display_name ?? "AI"}
+            assetMix={formValues.assetMix}
+          />
+        )}
         {recommendation && <RecommendationResults recommendation={recommendation} />}
       </div>
     </div>
@@ -128,12 +139,17 @@ function parseCustomTickers(text: string): string[] {
     .filter(Boolean);
 }
 
-function validateForm(values: InvestmentFormValues, watchlistSize: number): string | null {
+function validateForm(values: InvestmentFormValues, watchlist: WatchlistCounts): string | null {
   const amount = Number(values.amountText);
   if (!values.amountText || !Number.isFinite(amount) || amount <= 0) return "Enter an amount greater than ₹0.";
   if (values.universeSource === "custom" && parseCustomTickers(values.customTickersText).length < 2)
     return "Enter at least 2 tickers.";
-  if (values.universeSource === "watchlist" && watchlistSize < 2) return "Your watchlist needs at least 2 stocks.";
+  if (values.universeSource === "watchlist") {
+    if (values.assetMix === "stocks" && watchlist.stocks < 2) return "Your watchlist needs at least 2 stocks.";
+    if (values.assetMix === "mutual_funds" && watchlist.funds < 2) return "Your watchlist needs at least 2 funds.";
+    if (values.assetMix === "mixed" && (watchlist.stocks < 1 || watchlist.funds < 1))
+      return "Your watchlist needs at least 1 stock and 1 fund.";
+  }
   return null;
 }
 
@@ -145,7 +161,11 @@ function buildRequest(values: InvestmentFormValues, providerId: ProviderId, mode
     risk_level: values.riskLevel,
     provider_id: providerId,
     model_name: model || null,
+    asset_mix: values.assetMix,
     universe_source: values.universeSource,
-    custom_tickers: values.universeSource === "custom" ? parseCustomTickers(values.customTickersText) : [],
+    custom_tickers:
+      values.universeSource === "custom" && values.assetMix !== "mutual_funds"
+        ? parseCustomTickers(values.customTickersText)
+        : [],
   };
 }

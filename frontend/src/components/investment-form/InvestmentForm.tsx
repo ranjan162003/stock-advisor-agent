@@ -1,10 +1,12 @@
-import type { InvestmentMode, RecurringFrequency, StockUniverseSource } from "../../types/recommendation.types";
+import type { AssetMix, InvestmentMode, RecurringFrequency, StockUniverseSource } from "../../types/recommendation.types";
 import { formatInr } from "../../utils/displayFormatters";
+import { AssetMixToggle } from "./AssetMixToggle";
 import { InvestmentModeToggle } from "./InvestmentModeToggle";
 import { RiskLevelSlider } from "./RiskLevelSlider";
-import { StockUniversePicker } from "./StockUniversePicker";
+import { StockUniversePicker, type WatchlistCounts } from "./StockUniversePicker";
 
 export interface InvestmentFormValues {
+  assetMix: AssetMix;
   investmentMode: InvestmentMode;
   amountText: string;
   recurringFrequency: RecurringFrequency;
@@ -14,6 +16,7 @@ export interface InvestmentFormValues {
 }
 
 export const INITIAL_INVESTMENT_FORM_VALUES: InvestmentFormValues = {
+  assetMix: "stocks",
   investmentMode: "one_time",
   amountText: "50000",
   recurringFrequency: "monthly",
@@ -24,11 +27,11 @@ export const INITIAL_INVESTMENT_FORM_VALUES: InvestmentFormValues = {
 
 interface InvestmentFormProps {
   values: InvestmentFormValues;
-  watchlistSize: number;
+  watchlistCounts: WatchlistCounts;
   onChange: (values: InvestmentFormValues) => void;
 }
 
-export function InvestmentForm({ values, watchlistSize, onChange }: InvestmentFormProps) {
+export function InvestmentForm({ values, watchlistCounts, onChange }: InvestmentFormProps) {
   const update = <K extends keyof InvestmentFormValues>(key: K, value: InvestmentFormValues[K]) =>
     onChange({ ...values, [key]: value });
 
@@ -39,12 +42,24 @@ export function InvestmentForm({ values, watchlistSize, onChange }: InvestmentFo
     <section className="card">
       <h2 className="card__title">Investment</h2>
 
+      <AssetMixToggle
+        value={values.assetMix}
+        onChange={(assetMix) =>
+          onChange({
+            ...values,
+            assetMix,
+            // Custom lists hold stock tickers, so they don't apply to a funds-only request.
+            universeSource: assetMix === "mutual_funds" && values.universeSource === "custom" ? "default" : values.universeSource,
+          })
+        }
+      />
+
       <InvestmentModeToggle value={values.investmentMode} onChange={(mode) => update("investmentMode", mode)} />
 
       <div className="field-row">
         <div className="field field--grow">
           <label className="field__label" htmlFor="amount">
-            {isRecurring ? "Amount per period (₹)" : "Lump sum (₹)"}
+            {isRecurring ? (values.assetMix === "stocks" ? "Amount per period (₹)" : "SIP amount per period (₹)") : "Lump sum (₹)"}
           </label>
           <input
             id="amount"
@@ -52,7 +67,7 @@ export function InvestmentForm({ values, watchlistSize, onChange }: InvestmentFo
             type="number"
             inputMode="numeric"
             min={1}
-            step={500}
+            step="any"
             value={values.amountText}
             onChange={(event) => update("amountText", event.target.value)}
           />
@@ -80,9 +95,10 @@ export function InvestmentForm({ values, watchlistSize, onChange }: InvestmentFo
       <RiskLevelSlider value={values.riskLevel} onChange={(level) => update("riskLevel", level)} />
 
       <StockUniversePicker
+        assetMix={values.assetMix}
         source={values.universeSource}
         customTickersText={values.customTickersText}
-        watchlistSize={watchlistSize}
+        watchlistCounts={watchlistCounts}
         onSourceChange={(source) => update("universeSource", source)}
         onCustomTickersTextChange={(text) => update("customTickersText", text)}
       />

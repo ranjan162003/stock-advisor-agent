@@ -53,7 +53,7 @@ def build_stock_snapshots(session: Session, tickers: list[str], settings: AppSet
                     closes_by_ticker.items(),
                 )
             )
-        save_snapshots_to_cache(session, fetched)
+        save_snapshots_to_cache(session, {s.ticker: s for s in fetched}, fetched_at=datetime.now(timezone.utc))
 
     by_ticker = {**cached, **{s.ticker: s for s in fetched}}
     ordered = [by_ticker[t] for t in tickers if t in by_ticker]

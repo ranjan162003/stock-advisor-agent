@@ -5,6 +5,8 @@ import { ProviderConnectionsProvider } from "./context/ProviderConnectionsContex
 import { AdvisorPage } from "./pages/AdvisorPage";
 import { AgentConnectorsPage } from "./pages/AgentConnectorsPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { RebalancePage } from "./pages/RebalancePage";
+import { SipPlannerPage } from "./pages/SipPlannerPage";
 import { WatchlistPage } from "./pages/WatchlistPage";
 
 export function App() {
@@ -17,6 +19,8 @@ export function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/history/:recommendationId" element={<HistoryPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/planner" element={<SipPlannerPage />} />
+            <Route path="/rebalance" element={<RebalancePage />} />
             <Route path="/connectors" element={<AgentConnectorsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

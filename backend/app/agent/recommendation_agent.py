@@ -8,6 +8,7 @@ from app.agent.recommendation_prompt_builder import build_json_repair_prompt, bu
 from app.agent.recommendation_response_parser import ParsedRecommendation, parse_recommendation_reply
 from app.core.app_exceptions import RecommendationParseError
 from app.schemas.market_data_schemas import ScoredStockCandidate
+from app.schemas.mutual_fund_schemas import ScoredFundCandidate
 from app.schemas.recommendation_schemas import RecommendationRequest
 
 logger = logging.getLogger(__name__)
@@ -19,9 +20,14 @@ class RecommendationAgent:
         self._model_name = model_name
         self._max_picks = max_picks
 
-    def recommend(self, request: RecommendationRequest, candidates: list[ScoredStockCandidate]) -> ParsedRecommendation:
-        allowed_tickers = {c.snapshot.ticker for c in candidates}
-        prompt = build_recommendation_prompt(request, candidates, self._max_picks)
+    def recommend(
+        self,
+        request: RecommendationRequest,
+        stock_candidates: list[ScoredStockCandidate],
+        fund_candidates: list[ScoredFundCandidate],
+    ) -> ParsedRecommendation:
+        allowed_tickers = {c.snapshot.ticker for c in stock_candidates} | {c.snapshot.symbol for c in fund_candidates}
+        prompt = build_recommendation_prompt(request, stock_candidates, fund_candidates, self._max_picks)
 
         reply = self._provider.generate_text(prompt, self._model_name)
         try:

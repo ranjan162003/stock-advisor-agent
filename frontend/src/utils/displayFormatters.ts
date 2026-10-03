@@ -39,3 +39,22 @@ export function formatDateTime(isoString: string): string {
 export function shortTicker(ticker: string): string {
   return ticker.replace(/\.(NS|BO)$/, "");
 }
+
+/** Label for any holding: the ticker for stocks, the short scheme name for funds. */
+export function holdingLabel(item: { ticker: string; display_name?: string | null }): string {
+  return item.display_name || shortTicker(item.ticker);
+}
+
+export function formatUnits(units: number): string {
+  return units.toLocaleString("en-IN", { maximumFractionDigits: 3 });
+}
+
+/** Indian short form for chart axes and tiles: ₹8.4K, ₹12.5L, ₹1.2Cr. */
+export function formatInrCompact(amount: number): string {
+  const abs = Math.abs(amount);
+  const trim = (n: number) => n.toFixed(n >= 100 ? 0 : 1).replace(/\.0$/, "");
+  if (abs >= 1e7) return `₹${trim(amount / 1e7)}Cr`;
+  if (abs >= 1e5) return `₹${trim(amount / 1e5)}L`;
+  if (abs >= 1e3) return `₹${trim(amount / 1e3)}K`;
+  return `₹${Math.round(amount)}`;
+}

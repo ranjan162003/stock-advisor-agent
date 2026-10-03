@@ -37,6 +37,8 @@ class AppSettings(BaseSettings):
     max_candidates_sent_to_llm: int = 12
     # Local models are slower and follow long prompts less reliably — give them fewer.
     max_candidates_sent_to_local_llm: int = 8
+    max_fund_candidates_sent_to_llm: int = 10
+    max_fund_candidates_sent_to_local_llm: int = 6
     max_stocks_per_recommendation: int = 6
     llm_timeout_seconds: int = 240
     ollama_timeout_seconds: int = 600

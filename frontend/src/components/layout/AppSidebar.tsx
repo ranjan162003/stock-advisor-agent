@@ -1,4 +1,4 @@
-import { History, LineChart, Plug, ShieldAlert, Star, X, type LucideIcon } from "lucide-react";
+import { Calculator, History, LineChart, Plug, Scale, ShieldAlert, Star, X, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { useProviderConnections } from "../../context/ProviderConnectionsContext";
@@ -18,6 +18,13 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: "/", label: "Advisor", icon: LineChart, end: true },
       { to: "/history", label: "History", icon: History },
       { to: "/watchlist", label: "Watchlist", icon: Star },
+    ],
+  },
+  {
+    title: "Plan",
+    items: [
+      { to: "/planner", label: "SIP planner", icon: Calculator },
+      { to: "/rebalance", label: "Rebalance", icon: Scale },
     ],
   },
   {

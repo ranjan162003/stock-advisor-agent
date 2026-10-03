@@ -7,6 +7,7 @@ from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.market_data_schemas import CandidateScore, NewsHeadline
+from app.schemas.mutual_fund_schemas import FundScore
 from app.schemas.provider_schemas import ProviderId
 
 RECOMMENDATION_DISCLAIMER = (
@@ -24,6 +25,17 @@ class InvestmentMode(str, Enum):
 class RecurringFrequency(str, Enum):
     MONTHLY = "monthly"
     YEARLY = "yearly"
+
+
+class AssetMix(str, Enum):
+    STOCKS = "stocks"
+    MUTUAL_FUNDS = "mutual_funds"
+    MIXED = "mixed"
+
+
+class AssetType(str, Enum):
+    STOCK = "stock"
+    MUTUAL_FUND = "mutual_fund"
 
 
 class StockUniverseSource(str, Enum):
@@ -48,6 +60,8 @@ class RecommendationRequest(BaseModel):
     risk_level: int = Field(ge=1, le=5)
     provider_id: ProviderId
     model_name: str | None = Field(default=None, max_length=64)
+    asset_mix: AssetMix = AssetMix.STOCKS
+    # Which candidates to consider: the built-in lists, your watchlist, or (stocks only) custom tickers.
     universe_source: StockUniverseSource = StockUniverseSource.DEFAULT
     custom_tickers: list[str] = Field(default_factory=list, max_length=40)
 
@@ -57,31 +71,48 @@ class RecommendationRequest(BaseModel):
             raise ValueError("recurring_frequency is required for recurring investments")
         if self.investment_mode is InvestmentMode.ONE_TIME:
             self.recurring_frequency = None
-        if self.universe_source is StockUniverseSource.CUSTOM and not self.custom_tickers:
-            raise ValueError("custom_tickers must list at least one ticker")
+        if self.universe_source is StockUniverseSource.CUSTOM:
+            if self.asset_mix is AssetMix.MUTUAL_FUNDS:
+                raise ValueError("custom lists are for stocks; add funds to your watchlist instead")
+            if not self.custom_tickers:
+                raise ValueError("custom_tickers must list at least one ticker")
         return self
 
+    @property
+    def includes_stocks(self) -> bool:
+        return self.asset_mix in (AssetMix.STOCKS, AssetMix.MIXED)
 
-class StockAllocation(BaseModel):
-    ticker: str
-    company_name: str
-    sector: str | None = None
+    @property
+    def includes_funds(self) -> bool:
+        return self.asset_mix in (AssetMix.MUTUAL_FUNDS, AssetMix.MIXED)
+
+
+class PortfolioAllocation(BaseModel):
+    ticker: str = Field(description='Stock ticker ("TCS.NS") or fund symbol ("MF:122639")')
+    asset_type: AssetType = AssetType.STOCK
+    display_name: str | None = Field(default=None, description='Short label, e.g. "TCS" or "Parag Parikh Flexi Cap"')
+    company_name: str = Field(description="Company name, or the full scheme name for a fund")
+    sector: str | None = Field(default=None, description="Sector for stocks, category for funds")
     weight_percent: float
     amount: float = Field(description="INR for this one-time investment, or for this period if recurring")
-    last_price: float
-    approx_whole_shares: int
+    last_price: float = Field(description="Share price, or NAV for a fund")
+    approx_whole_shares: int = Field(description="Whole shares the amount buys (0 for funds)")
+    approx_units: float | None = Field(default=None, description="Fund units the amount buys (funds only)")
     rationale: str
 
 
 class CandidateSummary(BaseModel):
     ticker: str
+    asset_type: AssetType = AssetType.STOCK
+    display_name: str | None = None
     company_name: str
     sector: str | None = None
     last_price: float
     return_1y_percent: float | None = None
+    cagr_3y_percent: float | None = None
     annualized_volatility_percent: float | None = None
     trailing_pe: float | None = None
-    score: CandidateScore
+    score: CandidateScore | FundScore
     headlines: list[NewsHeadline] = []
     was_picked: bool
 
@@ -95,7 +126,8 @@ class RecommendationResponse(BaseModel):
     risk_level: int
     provider_id: ProviderId
     model_name: str
-    allocations: list[StockAllocation]
+    asset_mix: AssetMix = AssetMix.STOCKS
+    allocations: list[PortfolioAllocation]
     summary: str
     risk_notes: list[str]
     candidates_considered: list[CandidateSummary]
@@ -112,4 +144,6 @@ class RecommendationHistoryItem(BaseModel):
     risk_level: int
     provider_id: ProviderId
     model_name: str
+    asset_mix: AssetMix = AssetMix.STOCKS
     picked_tickers: list[str]
+    picked_labels: list[str] = Field(default_factory=list)

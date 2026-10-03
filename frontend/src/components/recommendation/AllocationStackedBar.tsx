@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import type { StockAllocation } from "../../types/recommendation.types";
-import { formatInr, formatPercent, shortTicker } from "../../utils/displayFormatters";
+import type { PortfolioAllocation } from "../../types/recommendation.types";
+import { formatInr, formatPercent, holdingLabel } from "../../utils/displayFormatters";
 
 /** CSS variable for the categorical slot at `index` (slots are defined in global.css). */
 export function seriesColorVar(index: number): string {
@@ -9,13 +9,13 @@ export function seriesColorVar(index: number): string {
 }
 
 interface AllocationStackedBarProps {
-  allocations: StockAllocation[];
+  allocations: PortfolioAllocation[];
   amountLabel: string;
 }
 
 /**
  * Part-to-whole as one 100% horizontal bar. Identity is carried by the legend
- * (ticker + %) underneath, never by color alone; AllocationTable is the table view.
+ * (name + %) underneath, never by color alone; AllocationTable is the table view.
  */
 export function AllocationStackedBar({ allocations, amountLabel }: AllocationStackedBarProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -62,7 +62,7 @@ export function AllocationStackedBar({ allocations, amountLabel }: AllocationSta
               onMouseLeave={() => setActiveIndex(null)}
             >
               <span className="swatch" style={{ background: seriesColorVar(index) }} aria-hidden="true" />
-              <span className="allocation-bar__legend-ticker">{shortTicker(allocation.ticker)}</span>
+              <span className="allocation-bar__legend-ticker">{holdingLabel(allocation)}</span>
               <span className="allocation-bar__legend-value">{formatPercent(allocation.weight_percent)}</span>
             </li>
           ))}

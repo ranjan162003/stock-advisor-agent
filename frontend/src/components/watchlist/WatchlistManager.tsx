@@ -32,7 +32,7 @@ export function WatchlistManager({ watchlist, suggestions, onAdd, onRemove }: Wa
   return (
     <>
       <section className="card">
-        <h2 className="card__title">Your watchlist ({watchlist.length})</h2>
+        <h2 className="card__title">Stocks ({watchlist.length})</h2>
         <form className="inline-form" onSubmit={handleSubmit}>
           <input
             className="input"

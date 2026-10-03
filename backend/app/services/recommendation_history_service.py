@@ -25,7 +25,9 @@ def list_recommendation_history(session: Session, limit: int) -> list[Recommenda
                 risk_level=response.risk_level,
                 provider_id=response.provider_id,
                 model_name=response.model_name,
+                asset_mix=response.asset_mix,
                 picked_tickers=[a.ticker for a in response.allocations],
+                picked_labels=[a.display_name or a.ticker for a in response.allocations],
             )
         )
     return items

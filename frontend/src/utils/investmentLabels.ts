@@ -1,4 +1,4 @@
-import type { InvestmentMode, RecurringFrequency } from "../types/recommendation.types";
+import type { AssetMix, InvestmentMode, RecurringFrequency } from "../types/recommendation.types";
 import type { ProviderId } from "../types/provider.types";
 
 // Keep in sync with RISK_LEVEL_LABELS in backend/app/schemas/recommendation_schemas.py
@@ -24,3 +24,9 @@ export function describeInvestmentMode(mode: InvestmentMode, frequency: Recurrin
 export function periodWord(frequency: RecurringFrequency | null): string {
   return frequency === "yearly" ? "year" : "month";
 }
+
+export const ASSET_MIX_LABELS: Record<AssetMix, string> = {
+  stocks: "Stocks",
+  mutual_funds: "Mutual funds",
+  mixed: "Stocks + funds",
+};

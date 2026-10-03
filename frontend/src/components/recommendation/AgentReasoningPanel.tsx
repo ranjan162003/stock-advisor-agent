@@ -1,9 +1,10 @@
-import type { StockAllocation } from "../../types/recommendation.types";
-import { formatPercent, shortTicker } from "../../utils/displayFormatters";
+import type { PortfolioAllocation } from "../../types/recommendation.types";
+import { formatPercent, holdingLabel } from "../../utils/displayFormatters";
+import { AssetTypePill } from "./AssetTypePill";
 
 interface AgentReasoningPanelProps {
   summary: string;
-  allocations: StockAllocation[];
+  allocations: PortfolioAllocation[];
   riskNotes: string[];
 }
 
@@ -17,9 +18,12 @@ export function AgentReasoningPanel({ summary, allocations, riskNotes }: AgentRe
         {allocations.map((allocation) => (
           <li key={allocation.ticker} className="reasoning__pick">
             <div className="reasoning__pick-header">
-              <strong>{shortTicker(allocation.ticker)}</strong>
+              <strong>
+                {holdingLabel(allocation)} <AssetTypePill assetType={allocation.asset_type} />
+              </strong>
               <span className="muted">
-                {allocation.company_name} · {formatPercent(allocation.weight_percent)}
+                {allocation.asset_type === "mutual_fund" ? allocation.sector : allocation.company_name} ·{" "}
+                {formatPercent(allocation.weight_percent)}
               </span>
             </div>
             <p>{allocation.rationale || "No rationale given."}</p>

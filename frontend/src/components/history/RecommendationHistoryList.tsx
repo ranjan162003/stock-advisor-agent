@@ -22,7 +22,7 @@ export function RecommendationHistoryList({ items, onDelete }: RecommendationHis
               {formatInr(item.amount)}{" "}
               <span className="muted">· {describeInvestmentMode(item.investment_mode, item.recurring_frequency)}</span>
             </span>
-            <span className="history-list__tickers">{item.picked_tickers.map(shortTicker).join(", ")}</span>
+            <span className="history-list__tickers">{(item.picked_labels?.length ? item.picked_labels : item.picked_tickers.map(shortTicker)).join(", ")}</span>
             <span className="history-list__meta">
               {formatDateTime(item.created_at)} · {PROVIDER_LABELS[item.provider_id]}
             </span>

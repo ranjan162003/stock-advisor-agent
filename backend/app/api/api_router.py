@@ -5,6 +5,8 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     health_routes,
+    mutual_fund_routes,
+    planning_routes,
     provider_routes,
     recommendation_routes,
     stock_universe_routes,
@@ -15,5 +17,7 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(health_routes.router)
 api_router.include_router(provider_routes.router)
 api_router.include_router(recommendation_routes.router)
+api_router.include_router(mutual_fund_routes.router)
 api_router.include_router(watchlist_routes.router)
 api_router.include_router(stock_universe_routes.router)
+api_router.include_router(planning_routes.router)
