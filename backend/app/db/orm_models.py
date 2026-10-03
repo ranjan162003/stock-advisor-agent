@@ -1,10 +1,10 @@
-"""Database tables: watchlist, market-data cache, and recommendation history."""
+"""Database tables: watchlist, market-data cache, recommendation history, fund catalog and chats."""
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database_session import OrmBase
 
@@ -77,3 +77,31 @@ class FundCatalogRefresh(OrmBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     refreshed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     scheme_count: Mapped[int] = mapped_column(Integer)
+
+
+class ChatConversation(OrmBase):
+    """One saved Ask-AI chat."""
+
+    __tablename__ = "chat_conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(120), default="New chat")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    messages: Mapped[list[ChatMessage]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan", order_by="ChatMessage.id"
+    )
+
+
+class ChatMessage(OrmBase):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("chat_conversations.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(16))  # "user" | "assistant"
+    content: Mapped[str] = mapped_column(Text)
+    # Fund/stock/chart cards and follow-up suggestions shown with an assistant reply.
+    cards_json: Mapped[str] = mapped_column(Text, default="[]")
+    suggestions_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    conversation: Mapped[ChatConversation] = relationship(back_populates="messages")

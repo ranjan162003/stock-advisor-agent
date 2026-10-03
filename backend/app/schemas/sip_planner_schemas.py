@@ -7,9 +7,8 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ReturnSource(str, Enum):
-    RECOMMENDATION = "recommendation"
-    PRESET = "preset"
     FUNDS = "funds"
+    PRESET = "preset"
 
 
 class FundWeight(BaseModel):
@@ -47,14 +46,11 @@ class SipProjectionRequest(BaseModel):
     annual_step_up_percent: float = Field(default=0, ge=0, le=50)
     goal_amount: float | None = Field(default=None, gt=0)
     return_source: ReturnSource = ReturnSource.PRESET
-    recommendation_id: int | None = None
     preset: ReturnPreset | None = ReturnPreset.FLEXI_CAP
     funds: list[FundWeight] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _check_source(self) -> "SipProjectionRequest":
-        if self.return_source is ReturnSource.RECOMMENDATION and self.recommendation_id is None:
-            raise ValueError("recommendation_id is required when return_source is 'recommendation'")
         if self.return_source is ReturnSource.PRESET and self.preset is None:
             raise ValueError("preset is required when return_source is 'preset'")
         if self.return_source is ReturnSource.FUNDS:
@@ -88,7 +84,6 @@ class SipProjectionResponse(BaseModel):
     basis_annual_return_percent: float
     basis_annual_volatility_percent: float
     history_months: int | None = None
-    excluded_holdings: dict[str, str] = Field(default_factory=dict)
     simulated_paths: int
 
 

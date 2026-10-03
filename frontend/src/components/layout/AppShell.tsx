@@ -1,12 +1,19 @@
-import { Menu } from "lucide-react";
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
+import { AssistantPanel } from "../assistant/AssistantPanel";
 import { AppSidebar } from "./AppSidebar";
+import { MobileTabBar } from "./MobileTabBar";
 
-/** Sidebar + main content area. On narrow screens the sidebar becomes a slide-in drawer. */
+/**
+ * Sidebar + main content area. On phones the sidebar becomes a slide-in drawer,
+ * opened from "More" in the bottom tab bar.
+ */
 export function AppShell() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { pathname } = useLocation();
+  // Animate when switching pages, not when e.g. /history/5 → /history/7 changes inside one page.
+  const section = pathname.split("/")[1] || "advisor";
 
   return (
     <div className="app-shell">
@@ -15,20 +22,17 @@ export function AppShell() {
 
       <div className="app-shell__main">
         <header className="mobile-topbar">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setIsSidebarOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
+          <span className="sidebar__logo mobile-topbar__logo" aria-hidden="true">₹</span>
           <span className="mobile-topbar__title">Stock Advisor</span>
         </header>
         <main className="app-content">
-          <Outlet />
+          <div key={section} className="page-transition">
+            <Outlet />
+          </div>
         </main>
       </div>
+      <AssistantPanel />
+      <MobileTabBar onOpenMore={() => setIsSidebarOpen(true)} />
     </div>
   );
 }

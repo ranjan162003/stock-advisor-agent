@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
-from sqlalchemy.orm import Session
 
 from app.analysis.sip_simulator import (
     DEFAULT_PATHS,
@@ -17,8 +16,6 @@ from app.analysis.sip_simulator import (
     required_monthly_amount,
     simulate_sip,
 )
-from app.core.app_exceptions import InvalidRequestError, MarketDataError
-from app.data_sources.default_fund_universe import is_fund_symbol, scheme_code_from_symbol
 from app.analysis.sip_backtester import (
     FIXED_DEPOSIT_RATE_PERCENT,
     FundLeg,
@@ -27,14 +24,10 @@ from app.analysis.sip_backtester import (
     worst_drawdown_percent,
     xirr,
 )
+from app.core.app_exceptions import InvalidRequestError
 from app.data_sources.default_fund_universe import DEFAULT_FUNDS_BY_CODE, short_fund_name
-from app.data_sources.historical_returns_client import (
-    fetch_fund_monthly_returns,
-    fetch_stock_monthly_returns,
-    monthly_returns_from_navs,
-)
+from app.data_sources.historical_returns_client import monthly_returns_from_navs
 from app.data_sources.mfapi_mutual_fund_client import fetch_fund_nav_history
-from app.schemas.recommendation_schemas import RecommendationResponse
 from app.schemas.sip_planner_schemas import (
     BacktestFundResult,
     BacktestPoint,
@@ -48,7 +41,6 @@ from app.schemas.sip_planner_schemas import (
     SipProjectionResponse,
     YearlyProjectionPoint,
 )
-from app.services.recommendation_history_service import get_recommendation_detail
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +64,6 @@ RETURN_PRESETS: dict[ReturnPreset, ReturnPresetInfo] = {
 }
 
 MIN_HISTORY_MONTHS = 36
-MIN_COVERED_WEIGHT = 0.5
 SIMULATION_SEED = 20261003  # fixed so the same inputs always give the same projection
 
 
@@ -80,23 +71,12 @@ def list_return_presets() -> list[ReturnPresetInfo]:
     return list(RETURN_PRESETS.values())
 
 
-def project_sip(session: Session, request: SipProjectionRequest) -> SipProjectionResponse:
+def project_sip(request: SipProjectionRequest) -> SipProjectionResponse:
     months = request.years * 12
     rng = np.random.default_rng(SIMULATION_SEED)
-    excluded: dict[str, str] = {}
     history_months: int | None = None
 
-    if request.return_source is ReturnSource.RECOMMENDATION:
-        recommendation = get_recommendation_detail(session, request.recommendation_id)
-        history, excluded = build_portfolio_monthly_returns(recommendation)
-        history_months = history.size
-        basis_return, basis_volatility = annualized_stats(history)
-        returns = bootstrap_monthly_returns(history, months, DEFAULT_PATHS, rng)
-        labels = ", ".join(a.display_name or a.ticker for a in recommendation.allocations[:4])
-        more = len(recommendation.allocations) - 4
-        source = f"Replaying {history_months} real months of your recommendation #{recommendation.id} ({labels}"
-        source += f" +{more} more)" if more > 0 else ")"
-    elif request.return_source is ReturnSource.FUNDS:
+    if request.return_source is ReturnSource.FUNDS:
         funds = load_funds(request.funds)
         history = weighted_monthly_returns(
             {f.key: monthly_returns_from_navs(f.navs) for f in funds}, {f.key: f.weight for f in funds}
@@ -149,47 +129,8 @@ def project_sip(session: Session, request: SipProjectionRequest) -> SipProjectio
         basis_annual_return_percent=round(basis_return, 1),
         basis_annual_volatility_percent=round(basis_volatility, 1),
         history_months=history_months,
-        excluded_holdings=excluded,
         simulated_paths=DEFAULT_PATHS,
     )
-
-
-def build_portfolio_monthly_returns(recommendation: RecommendationResponse) -> tuple[np.ndarray, dict[str, str]]:
-    """Weighted monthly returns of the recommended holdings over their common history.
-
-    Holdings with less than 3 years of history are left out (and reported) so a
-    new fund doesn't shrink the window for everything else.
-    """
-    weights = {a.ticker: a.weight_percent / 100 for a in recommendation.allocations}
-    stock_tickers = [t for t in weights if not is_fund_symbol(t)]
-    fund_symbols = [t for t in weights if is_fund_symbol(t)]
-
-    series: dict[str, pd.Series] = dict(fetch_stock_monthly_returns(stock_tickers))
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        for symbol, fund_series in zip(
-            fund_symbols, pool.map(lambda s: fetch_fund_monthly_returns(scheme_code_from_symbol(s)), fund_symbols)
-        ):
-            if fund_series is not None:
-                series[symbol] = fund_series
-
-    excluded: dict[str, str] = {}
-    usable: dict[str, pd.Series] = {}
-    for ticker in weights:
-        if ticker not in series:
-            excluded[ticker] = "No price history available."
-        elif len(series[ticker]) < MIN_HISTORY_MONTHS:
-            excluded[ticker] = f"Only {len(series[ticker])} months of history (need {MIN_HISTORY_MONTHS})."
-        else:
-            usable[ticker] = series[ticker]
-
-    covered_weight = sum(weights[t] for t in usable)
-    if covered_weight < MIN_COVERED_WEIGHT:
-        raise MarketDataError(
-            "Not enough of this portfolio has 3+ years of history to replay. Use a preset return assumption instead."
-        )
-    portfolio = weighted_monthly_returns(usable, {t: weights[t] for t in usable})
-    logger.info("SIP basis: %d months, %d holdings (%d excluded)", portfolio.size, len(usable), len(excluded))
-    return portfolio, excluded
 
 
 def weighted_monthly_returns(series: dict[str, pd.Series], weights: dict[str, float]) -> np.ndarray:

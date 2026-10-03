@@ -1,15 +1,15 @@
 import { Calculator, History as HistoryIcon, Target, TrendingUp } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { planningApi } from "../api/planningApi";
+import { EmptyState } from "../components/common/EmptyState";
 import { ErrorAlert } from "../components/common/ErrorAlert";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
-import { RecommendationPicker } from "../components/common/RecommendationPicker";
 import { PageHeader } from "../components/layout/PageHeader";
 import { FundPicker, fundSplitIsValid, toFundWeights, type PickedFund } from "../components/planner/FundPicker";
 import { SipBacktestResults } from "../components/planner/SipBacktestResults";
 import { SipProjectionResults } from "../components/planner/SipProjectionResults";
+import { useAssistantPageContext } from "../context/AssistantContext";
 import type {
   ReturnPreset,
   ReturnPresetInfo,
@@ -21,30 +21,30 @@ import { formatInr, formatInrCompact } from "../utils/displayFormatters";
 
 type PlannerMode = "future" | "past";
 
+const EXAMPLE_FUND = { schemeCode: 122639, name: "Parag Parikh Flexi Cap" };
+
 const SOURCE_OPTIONS: { value: ReturnSource; label: string; hint: string }[] = [
-  { value: "funds", label: "My funds", hint: "Their real NAV history" },
-  { value: "recommendation", label: "Past advice", hint: "A saved result" },
-  { value: "preset", label: "Fund type", hint: "Typical long-run returns" },
+  { value: "funds", label: "My funds", hint: "Uses their real NAV history" },
+  { value: "preset", label: "A fund type", hint: "Typical long-run returns" },
 ];
 
 export function SipPlannerPage() {
-  const [searchParams] = useSearchParams();
-  const linkedRecommendation = Number(searchParams.get("recommendation")) || null;
-
+  useAssistantPageContext("planner");
   const [mode, setMode] = useState<PlannerMode>("future");
   const [monthlyText, setMonthlyText] = useState("10000");
   const [years, setYears] = useState(10);
   const [stepUp, setStepUp] = useState(0);
   const [goalText, setGoalText] = useState("");
-  const [source, setSource] = useState<ReturnSource>(linkedRecommendation ? "recommendation" : "funds");
+  const [source, setSource] = useState<ReturnSource>("funds");
   const [funds, setFunds] = useState<PickedFund[]>([]);
-  const [recommendationId, setRecommendationId] = useState<number | null>(linkedRecommendation);
   const [preset, setPreset] = useState<ReturnPreset>("flexi_cap");
   const [presets, setPresets] = useState<ReturnPresetInfo[]>([]);
   const [projection, setProjection] = useState<SipProjectionResponse | null>(null);
   const [backtest, setBacktest] = useState<SipBacktestResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [runWhenReady, setRunWhenReady] = useState(false);
 
   useEffect(() => {
     planningApi.getReturnPresets().then(setPresets).catch(() => setPresets([]));
@@ -62,9 +62,23 @@ export function SipPlannerPage() {
         ? "Pick at least one fund."
         : usesFunds && !fundSplitIsValid(funds)
           ? "Make the fund split add up to 100%."
-          : !isPast && source === "recommendation" && recommendationId === null
-            ? "Pick a recommendation."
-            : null;
+          : null;
+
+  // "Try an example" fills the form, then submits once the new values are in place.
+  useEffect(() => {
+    if (!runWhenReady || blocker) return;
+    setRunWhenReady(false);
+    formRef.current?.requestSubmit();
+  }, [runWhenReady, blocker]);
+
+  const tryExample = () => {
+    setMonthlyText(isPast ? "5000" : "10000");
+    setYears(isPast ? 7 : 10);
+    setStepUp(0);
+    setSource("funds");
+    setFunds([{ schemeCode: EXAMPLE_FUND.schemeCode, name: EXAMPLE_FUND.name, weightText: "100" }]);
+    setRunWhenReady(true);
+  };
 
   const switchMode = (next: PlannerMode) => {
     setMode(next);
@@ -95,7 +109,6 @@ export function SipPlannerPage() {
             annual_step_up_percent: stepUp,
             goal_amount: goalText ? goal : null,
             return_source: source,
-            recommendation_id: source === "recommendation" ? recommendationId : null,
             preset: source === "preset" ? preset : null,
             funds: source === "funds" ? toFundWeights(funds) : [],
           }),
@@ -140,13 +153,13 @@ export function SipPlannerPage() {
       </div>
 
       <div className="planner-layout">
-        <form className="card planner-form" onSubmit={handleSubmit}>
+        <form ref={formRef} className="card planner-form" onSubmit={handleSubmit}>
           <h2 className="card__title">{isPast ? "A SIP you could have started" : "Your SIP"}</h2>
 
           {!isPast && (
             <fieldset className="field">
               <legend className="field__label">Expected returns based on</legend>
-              <div className="segmented segmented--three">
+              <div className="segmented">
                 {SOURCE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
@@ -168,9 +181,6 @@ export function SipPlannerPage() {
               <span className="field__label">{isPast ? "Fund(s)" : "Your fund(s)"}</span>
               <FundPicker funds={funds} onChange={setFunds} />
             </div>
-          )}
-          {!isPast && source === "recommendation" && (
-            <RecommendationPicker id="sip-recommendation" label="Recommendation" value={recommendationId} onChange={setRecommendationId} />
           )}
           {!isPast && source === "preset" && (
             <label className="field" htmlFor="sip-preset">
@@ -263,13 +273,22 @@ export function SipPlannerPage() {
             <LoadingSpinner label={isPast ? "Replaying every month at real NAVs…" : "Simulating 4,000 market paths…"} />
           )}
           {!result && !isLoading && (
-            <section className="card empty-state planner-empty">
-              <Target size={28} />
-              <p>
-                {isPast
-                  ? "Pick a fund and how many years ago you'd have started — we'll replay every month at the real NAV."
-                  : "Pick your fund(s), set the SIP, and click Project my SIP to see the range of outcomes."}
-              </p>
+            <section className="card planner-empty">
+              <EmptyState
+                icon={isPast ? HistoryIcon : Target}
+                title={isPast ? "Replay a SIP from the past" : "See where a SIP could take you"}
+                description={
+                  isPast
+                    ? "Pick a fund and how many years ago you'd have started — every month is replayed at the real NAV."
+                    : "Pick your fund(s), set the SIP, and see a bad / typical / good range from 4,000 simulated paths."
+                }
+                actions={
+                  <button type="button" className="button button--primary" onClick={tryExample}>
+                    Try an example:{" "}
+                    {isPast ? "₹5,000/month for 7 years" : "₹10,000/month for 10 years"} in {EXAMPLE_FUND.name}
+                  </button>
+                }
+              />
             </section>
           )}
           {!isLoading && isPast && backtest && <SipBacktestResults result={backtest} />}

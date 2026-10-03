@@ -1,17 +1,20 @@
+import { PiggyBank } from "lucide-react";
 import { useState } from "react";
 
 import type { UniverseFund, WatchlistFund } from "../../types/mutualFund.types";
+import { EmptyState } from "../common/EmptyState";
 import { FundSearchCombobox } from "../common/FundSearchCombobox";
 
 interface FundWatchlistManagerProps {
   watchlist: WatchlistFund[];
   suggestions: UniverseFund[];
   onAdd: (schemeCode: number) => Promise<void>;
-  onRemove: (schemeCode: number) => Promise<void>;
+  onAddExamples: () => Promise<void>;
+  onRemove: (schemeCode: number) => void;
 }
 
 /** Browse or search every active Indian mutual fund and keep a personal fund watchlist. */
-export function FundWatchlistManager({ watchlist, onAdd, onRemove }: FundWatchlistManagerProps) {
+export function FundWatchlistManager({ watchlist, suggestions, onAdd, onAddExamples, onRemove }: FundWatchlistManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const watchedCodes = new Set(watchlist.map((fund) => fund.scheme_code));
 
@@ -35,7 +38,19 @@ export function FundWatchlistManager({ watchlist, onAdd, onRemove }: FundWatchli
       {isAdding && <p className="muted">Adding…</p>}
 
       {watchlist.length === 0 ? (
-        <p className="muted">No funds yet — pick some from the list above.</p>
+        <EmptyState
+          compact
+          icon={PiggyBank}
+          title="No funds yet"
+          description="Search the list above — or start with a few popular Direct-Growth funds."
+          actions={
+            suggestions.length > 0 && (
+              <button type="button" className="button button--primary button--small" onClick={() => void onAddExamples()}>
+                Try an example: add 3 popular funds
+              </button>
+            )
+          }
+        />
       ) : (
         <ul className="chip-list">
           {watchlist.map((fund) => (
@@ -45,7 +60,7 @@ export function FundWatchlistManager({ watchlist, onAdd, onRemove }: FundWatchli
                 type="button"
                 className="chip__remove"
                 aria-label={`Remove ${fund.scheme_name}`}
-                onClick={() => void onRemove(fund.scheme_code)}
+                onClick={() => onRemove(fund.scheme_code)}
               >
                 ×
               </button>

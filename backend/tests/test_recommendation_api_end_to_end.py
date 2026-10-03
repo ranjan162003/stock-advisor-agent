@@ -37,7 +37,7 @@ class FakeOllamaProvider(BaseLlmProvider):
             default_model="fake-model", status_message="ok",
         )
 
-    def generate_text(self, prompt: str, model_name: str | None = None) -> str:
+    def generate_text(self, prompt: str, model_name: str | None = None, json_schema: dict | None = None) -> str:
         self.prompts.append(prompt)
         return self.reply
 

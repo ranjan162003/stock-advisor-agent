@@ -98,15 +98,23 @@ def build_recommendation_prompt(
     )
     sections.append(
         "## Reply format\n"
-        "Reply with ONLY a JSON object, no markdown fences or text around it, matching:\n" + REPLY_JSON_CONTRACT
+        "Reply with ONLY a JSON object, no markdown fences or text before or after it, matching:\n"
+        + REPLY_JSON_CONTRACT
+        + "\nInside string values never use double quotes — write 'single quotes' instead — and keep each "
+        "string on one line."
     )
     return "\n\n".join(sections)
+
+
+MAX_REPAIR_REPLY_CHARS = 12_000  # the whole previous reply, so the model can see where it broke
 
 
 def build_json_repair_prompt(original_prompt: str, invalid_reply: str, problem: str) -> str:
     return (
         f"{original_prompt}\n\n## Correction needed\nYour previous reply could not be used ({problem}). "
-        f"Previous reply:\n{invalid_reply[:2000]}\n\nReply again with ONLY the corrected JSON object."
+        f"Previous reply:\n{invalid_reply[:MAX_REPAIR_REPLY_CHARS]}\n\n"
+        "Reply again with ONLY the complete, corrected JSON object — nothing before or after it, no double quotes "
+        "inside string values, and keep the rationales short enough to finish the whole object."
     )
 
 

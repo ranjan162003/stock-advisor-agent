@@ -8,8 +8,9 @@ Choose **stocks, mutual funds, or a mix of both**, enter an amount (one-time or 
 and a risk preference, then pick an AI model (**Claude**, **Gemini** or a local **Ollama** model).
 The agent pulls price history, fundamentals and news for Indian stocks and NAV track records for
 mutual funds, scores them, and asks the model to propose a diversified split, with its reasoning,
-the risks, and the whole shares or fund units each amount buys. Planning tools then let you project
-a SIP, replay one from the past, and rebalance your real portfolio.
+the risks, and the whole shares or fund units each amount buys. A SIP planner then lets you project
+a SIP or replay one from the past, and an **Ask AI** chat assistant answers questions about your results,
+funds, stocks and SIPs using the app's real data.
 
 ![React](https://img.shields.io/badge/React-Vite-blue) ![FastAPI](https://img.shields.io/badge/Python-FastAPI-green) ![uv](https://img.shields.io/badge/Python-uv-purple)
 
@@ -19,14 +20,23 @@ The app has a sidebar with these pages:
 
 | Section | Page | What you can do |
 |---|---|---|
-| Invest | **Advisor** | Pick stocks / mutual funds / mix, amount, one-time or SIP, risk level and which list to choose from, then get an AI-recommended split with reasons, risks, a chart and a table. An animated progress screen shows what the agent is doing while it works. |
-| Invest | **History** | Every recommendation, saved exactly as shown. Open, compare, or delete them. |
+| Invest | **Advisor** | Four numbered steps (what to invest in → how much → risk → AI model) with a live "Your plan" summary, then an AI-recommended split with reasons, risks, an allocation bar, a **holdings-and-sectors donut** and a table. An animated progress screen shows what the agent is doing while it works. |
+| Invest | **History** | Every recommendation, saved exactly as shown, with **how it has done since** (each holding's price or NAV then vs now, and the split's overall change). Open, compare, download as PDF, or delete with Undo. |
 | Invest | **Watchlist** | Two tabs: your own **stocks** and **mutual funds** for the agent to choose from. Funds are picked from a searchable list of every Indian fund. |
 | Plan | **SIP planner** | *Project the future* (a range of outcomes and your goal odds) or *What would have happened* (an exact replay of a past SIP with XIRR). |
-| Plan | **Rebalance** | Paste your broker holdings and get the exact buy / sell / hold trades to reach a recommended split. |
+| Plan | **Ask AI** | Chat with the assistant: it explains your recommendations, looks up real fund and stock numbers, runs the SIP calculators and explains investing terms. Chats are saved. It's also a floating **Ask AI** button on every page. |
 | Settings | **Agent connectors** | Connect Claude / Gemini (browser login or API key) or a local Ollama model, and choose which one gives advice. |
 
-Light and dark themes follow your system setting. The layout works on phones too, with the sidebar becoming a slide-out menu.
+- **Theme:** Light, Dark or System (follows your computer), switched at the bottom of the sidebar and remembered.
+- **Download as PDF:** every recommendation has a *Download PDF* button, and any Ask AI chat can be saved as a PDF
+  (cards and charts included). It opens the browser's print dialog, so choose **Save as PDF**. PDFs always print in
+  the light theme.
+- **Times** are stored in UTC and always shown in your computer's local time zone.
+- **Feedback:** small toasts confirm actions ("Added to watchlist"), and deleting a recommendation, chat or watchlist
+  item can be **undone** for a few seconds. Pages show loading placeholders instead of blank screens, and empty pages
+  offer a one-click **Try an example**.
+- **Phones:** a bottom tab bar (Advisor · History · Planner · Ask AI · More), a full-screen chat, and a swipeable
+  history list.
 
 ## How it works
 
@@ -35,9 +45,10 @@ flowchart TB
     subgraph UI["React frontend · localhost:5173"]
         direction LR
         ADV["Advisor<br/>amount · mode · risk · assets"]
-        PLAN["SIP planner · Rebalance"]
+        PLAN["SIP planner"]
         CON["Agent connectors<br/>browser login · API key · local"]
         HIS["History · Watchlist"]
+        ASK["Ask AI<br/>floating panel + full page"]
     end
 
     subgraph API["FastAPI backend · localhost:8000"]
@@ -50,7 +61,8 @@ flowchart TB
         AGENT["6 · Recommendation agent<br/>prompt → LLM → validate JSON"]
         ALLOC["7 · Allocation<br/>weights → ₹ amounts + shares / units"]
         TICK --> DATA --> IND --> SCORE --> SHORT --> AGENT --> ALLOC
-        CALC["Planning maths<br/>Monte Carlo · SIP replay + XIRR · trades"]
+        CALC["SIP maths<br/>Monte Carlo · SIP replay + XIRR"]
+        CHAT["Chat assistant agent<br/>LLM picks a tool → backend runs it<br/>→ answer + cards (streamed)"]
     end
 
     YAHOO[("Yahoo Finance<br/>stock prices · news")]
@@ -72,6 +84,10 @@ flowchart TB
     CON -- "login or API key" --> LLM
     ALLOC -- "save" --> DB
     DB --> HIS
+    ASK -- "question (SSE stream back)" --> CHAT
+    CHAT <--> LLM
+    CHAT -- "tools: fund / stock data,<br/>SIP maths, your history" --> CALC
+    CHAT <--> DB
 ```
 
 **A recommendation, step by step**
@@ -101,12 +117,31 @@ flowchart TB
 | **One-time** | Rupee amount per holding, plus whole shares (stocks) or units (funds) it buys |
 | **Recurring** (monthly/yearly SIP) | Target **% allocation** to re-apply to each contribution (plus this period's rupee split) |
 
-### Planning tools
+### SIP planner
 
 | Page | What it does |
 |---|---|
-| **SIP planner** | Two modes. **Project the future:** a monthly SIP, with optional yearly step-up and goal, shown as a **bad / typical / good** range from 4,000 simulated paths. Returns can come from your own funds' real NAV history (any 1–5 funds, your split), a past recommendation, or a fund-type assumption. You also see the chance of hitting your goal and the SIP needed for 50% / 80% confidence. **What would have happened:** replays a real past SIP month by month at actual NAVs (e.g. ₹10,000/month in Parag Parikh since 2016) and reports the value today, the XIRR, the same SIP in a 7% FD, and the worst dip along the way. |
-| **Rebalance** | Compares what you own with a recommended target and lists the exact **buy / sell / hold** trades: whole shares for stocks, units for funds. You can type your holdings in or paste a Zerodha / Groww / Upstox / Coin export; columns and names are matched automatically. Choose *Don't sell anything* (only invest new cash, so no capital-gains tax) or *Full rebalance*. It's pure arithmetic, no AI, so the numbers are exact. |
+| **SIP planner** | Two modes. **Project the future:** a monthly SIP, with optional yearly step-up and goal, shown as a **bad / typical / good** range from 4,000 simulated paths. Returns come from either your own funds' real NAV history (any 1–5 funds, your split) or a fund-type assumption. You also see the chance of hitting your goal and the SIP needed for 50% / 80% confidence. **What would have happened:** replays a real past SIP month by month at actual NAVs (e.g. ₹10,000/month in Parag Parikh since 2016) and reports the value today, the XIRR, the same SIP in a 7% FD, and the worst dip along the way. |
+
+### Ask AI (chat assistant)
+
+Click **Ask AI** (bottom-right on any page, or in the sidebar) and ask in plain words. Examples:
+
+- *"Explain this recommendation in simple words"* or *"What are the biggest risks here?"* on a result. The
+  assistant knows which recommendation you're looking at. Results also show these as one-click questions.
+- *"How has Parag Parikh Flexi Cap done?"* or *"Compare HDFC Mid-Cap with Kotak Emerging Equity"*.
+- *"What would ₹10,000 a month in Parag Parikh for 10 years become?"* (projection) or *"…if I'd started 5 years
+  ago?"* (replay at real NAVs).
+- *"What is XIRR?"* or *"Why does my fund have a negative 1-year return?"*
+
+How it works: the model never makes numbers up. On each step it replies with a small JSON message: either a
+**tool call** (search funds, fund details, compare funds, stock details, project SIP, replay past SIP, read a saved
+recommendation, list your recommendations) or the **final answer**. The backend runs the tool on real data, feeds
+the result back, and the model answers (at most 4 tools per question). This works the same on Claude, Gemini and
+Ollama. Tool results appear in the chat as **cards**: fund and stock cards, a comparison table, the SIP charts, or
+your allocation bar. You also get suggested follow-up questions, and live status ("Searching funds…") is streamed
+while it works. Every chat is saved on the Ask AI page, where you can rename or delete it. It answers with the model
+chosen in Agent connectors.
 
 ### Finding a fund
 
@@ -144,21 +179,22 @@ stock-advisor-agent/
 │   │   ├── core/
 │   │   │   ├── app_settings.py             Typed settings (env: STOCK_ADVISOR_*)
 │   │   │   ├── app_exceptions.py           Domain errors → HTTP status mapping
+│   │   │   ├── utc_time.py                 Timestamps always sent as UTC ("…Z"), shown locally by the browser
 │   │   │   └── logging_config.py
 │   │   ├── db/
 │   │   │   ├── database_session.py         Engine, session factory, FastAPI dependency
-│   │   │   ├── orm_models.py               Tables: watchlists, data cache, history, fund catalog
+│   │   │   ├── orm_models.py               Tables: watchlists, data cache, history, fund catalog, chats
 │   │   │   └── repositories/               Queries only, one file per table:
 │   │   │       ├── watchlist_repository.py · watchlist_fund_repository.py
 │   │   │       ├── market_data_cache_repository.py · recommendation_repository.py
-│   │   │       └── fund_catalog_repository.py
+│   │   │       └── fund_catalog_repository.py · chat_repository.py
 │   │   ├── schemas/                        Pydantic request/response contracts:
 │   │   │   ├── recommendation_schemas.py   Requests, allocations, history
 │   │   │   ├── market_data_schemas.py      Stock snapshots and scores
 │   │   │   ├── mutual_fund_schemas.py      Fund snapshots, scores, search results, categories
 │   │   │   ├── sip_planner_schemas.py      SIP projection + historical replay
-│   │   │   ├── rebalance_schemas.py        Holdings, trades, broker import
 │   │   │   ├── provider_schemas.py         AI connector status
+│   │   │   ├── chat_schemas.py             Ask-AI conversations, messages, send request
 │   │   │   └── watchlist_schemas.py
 │   │   ├── data_sources/
 │   │   │   ├── default_stock_universe.py   24 NSE large caps + ticker normalizing
@@ -168,7 +204,7 @@ stock-advisor-agent/
 │   │   │   ├── amfi_fund_catalog_client.py Every active scheme from AMFI's daily NAV file
 │   │   │   ├── fund_search_aliases.py      Forgiving search: abbreviations, old names, ranking
 │   │   │   ├── mfapi_mutual_fund_client.py NAV history per fund (mfapi.in)
-│   │   │   └── historical_returns_client.py 10-year monthly returns for SIP projections
+│   │   │   └── historical_returns_client.py Monthly returns from NAVs for SIP projections
 │   │   ├── analysis/
 │   │   │   ├── technical_indicators.py     SMA, RSI, returns, volatility, drawdown
 │   │   │   ├── fundamentals_extractor.py
@@ -178,8 +214,7 @@ stock-advisor-agent/
 │   │   │   ├── fund_scoring.py             Fund pre-score + category-capped shortlist
 │   │   │   ├── fund_snapshot_builder.py    Cache-aware per-fund data assembly
 │   │   │   ├── sip_simulator.py            Monte Carlo SIP projection (bootstrap / log-normal)
-│   │   │   ├── sip_backtester.py           Replays a real past SIP at actual NAVs + XIRR
-│   │   │   └── rebalance_calculator.py     Buy / sell / hold trade maths
+│   │   │   └── sip_backtester.py           Replays a real past SIP at actual NAVs + XIRR
 │   │   ├── agent/
 │   │   │   ├── recommendation_agent.py     Prompt → LLM → parse (with one self-repair retry)
 │   │   │   ├── recommendation_prompt_builder.py  Stocks, funds or mixed prompts
@@ -192,6 +227,10 @@ stock-advisor-agent/
 │   │   │       ├── ollama_provider.py      Local Ollama server (schema-constrained JSON)
 │   │   │       ├── cli_process_runner.py   Run vendor CLIs / open login terminals
 │   │   │       └── llm_provider_registry.py
+│   │   ├── assistant/                      Ask-AI chat agent:
+│   │   │   ├── assistant_tools.py          Tools on real data (funds, stocks, SIP maths, history) + their cards
+│   │   │   ├── assistant_prompt_builder.py Rules, tool list, context, conversation, tool results
+│   │   │   └── assistant_agent.py          Loop: LLM → tool → LLM … → answer, yielding live events
 │   │   ├── security/api_key_vault.py       OS-keyring storage for API keys
 │   │   ├── services/                       Use-case orchestration:
 │   │   │   ├── recommendation_service.py   The full recommendation pipeline
@@ -200,13 +239,13 @@ stock-advisor-agent/
 │   │   │   ├── watchlist_service.py        Stock watchlist
 │   │   │   ├── mutual_fund_service.py      Fund search + fund watchlist
 │   │   │   ├── fund_catalog_service.py     Daily AMFI download + in-memory search index
+│   │   │   ├── recommendation_performance_service.py  "Since this recommendation": then vs now prices
 │   │   │   ├── sip_planner_service.py      SIP projection + historical replay
-│   │   │   ├── rebalance_service.py        Prices holdings, plans trades
-│   │   │   └── holdings_import_service.py  Reads broker CSV exports
+│   │   │   └── chat_service.py             Saved chats + one streamed (SSE) assistant turn
 │   │   └── api/
 │   │       ├── api_router.py               Mounts every route module under /api
 │   │       └── routes/                     health · providers · recommendations · watchlist ·
-│   │                                       stock_universe · mutual_fund · planning
+│   │                                       stock_universe · mutual_fund · planning · chat
 │   ├── tests/                              pytest (unit + end-to-end API with fakes)
 │   ├── pyproject.toml · uv.lock            Dependencies (managed with uv) + exact locked versions
 │   ├── .python-version                     Python 3.10
@@ -215,29 +254,37 @@ stock-advisor-agent/
 ├── frontend/                               React 18 · TypeScript · Vite
 │   └── src/
 │       ├── main.tsx · App.tsx              Entry + routes: / · /history/:id · /watchlist ·
-│       │                                   /planner · /rebalance · /connectors
+│       │                                   /planner · /assistant · /connectors
 │       ├── api/                            httpClient + one client per backend area:
 │       │                                   recommendation · provider · watchlist · mutualFund ·
-│       │                                   planning · stockUniverse
+│       │                                   planning · stockUniverse · chat (streams SSE)
 │       ├── types/                          *.types.ts mirroring backend schemas
 │       ├── context/ProviderConnectionsContext.tsx  App-wide connector status + active model
+│       ├── context/AssistantContext.tsx    Shared chat state (panel + page), page context, streaming
+│       ├── context/PrintContext.tsx        "Download PDF": renders a print-only sheet, opens Save as PDF
+│       ├── context/ToastContext.tsx        Toasts + delete-with-Undo
 │       ├── hooks/useProviderStatuses.ts    Provider status + login polling
+│       ├── hooks/useThemePreference.ts     Light / Dark / System, saved in the browser
 │       ├── pages/                          AdvisorPage · HistoryPage · WatchlistPage ·
-│       │                                   SipPlannerPage · RebalancePage · AgentConnectorsPage
+│       │                                   SipPlannerPage · AssistantPage · AgentConnectorsPage
 │       ├── components/
-│       │   ├── layout/                     AppShell · AppSidebar · PageHeader · DisclaimerBanner
-│       │   ├── common/                     FundSearchCombobox (pick any fund) · RecommendationPicker ·
+│       │   ├── layout/                     AppShell · AppSidebar · MobileTabBar · ThemeToggle · PageHeader ·
+│       │   │                               DisclaimerBanner
+│       │   ├── common/                     FundSearchCombobox (pick any fund) · PrintableDocument (PDF letterhead) ·
+│       │   │                               Skeleton · EmptyState · CountUp (animated numbers) ·
 │       │   │                               StatTile · ErrorAlert · LoadingSpinner · CopyableCommand
 │       │   ├── connectors/                 ConnectorCard · ProviderLogo · ConnectorStatusBadge · ApiKeyForm
-│       │   ├── investment-form/            InvestmentForm · AssetMixToggle · InvestmentModeToggle ·
+│       │   ├── investment-form/            InvestmentForm · FormStep · AssetMixToggle · InvestmentModeToggle ·
 │       │   │                               RiskLevelSlider · StockUniversePicker
 │       │   ├── model-picker/               ActiveModelSelector (compact chooser on the Advisor page)
-│       │   ├── recommendation/             RecommendationResults · AllocationStackedBar · AllocationTable ·
+│       │   ├── recommendation/             RecommendationResults · AllocationStackedBar · AllocationDonut ·
+│       │   │                               PerformanceSincePanel · AllocationTable ·
 │       │   │                               AgentReasoningPanel · CandidatesConsideredTable · AssetTypePill ·
 │       │   │                               RecommendationProgress (animated loader)
 │       │   ├── planner/                    FundPicker · SipProjectionResults · SipProjectionChart ·
 │       │   │                               SipBacktestResults · SipBacktestChart
-│       │   ├── rebalance/                  HoldingsEditor (with broker import) · RebalanceResults
+│       │   ├── assistant/                  AssistantPanel (floating button + panel) · ChatThread ·
+│       │   │                               ChatCards · ChatMarkdown (safe Markdown renderer)
 │       │   ├── history/                    RecommendationHistoryList
 │       │   └── watchlist/                  WatchlistManager (stocks) · FundWatchlistManager
 │       ├── utils/                          displayFormatters (₹, %, units) · investmentLabels
@@ -257,14 +304,14 @@ Interactive docs: **http://localhost:8000/docs** (while the backend runs). All r
 
 | Area | Endpoints |
 |---|---|
-| Recommendations | `POST /recommendations` · `GET /recommendations` (history) · `GET /recommendations/{id}` · `DELETE /recommendations/{id}` |
+| Recommendations | `POST /recommendations` · `GET /recommendations` (history) · `GET /recommendations/{id}` · `GET /recommendations/{id}/performance` (then vs now) · `DELETE /recommendations/{id}` |
 | AI connectors | `GET /providers` · `GET /providers/{id}` · `POST /providers/{id}/login` · `PUT` / `DELETE /providers/{id}/api-key` |
 | Stocks | `GET /stocks/default-universe` · `GET /stocks/{ticker}/snapshot` |
 | Stock watchlist | `GET /watchlist` · `POST /watchlist` · `DELETE /watchlist/{ticker}` |
 | Mutual funds | `GET /funds/search?q=&category=&include_all_plans=` · `GET /funds/categories` · `GET /funds/default-universe` |
 | Fund watchlist | `GET /watchlist/funds` · `POST /watchlist/funds` · `DELETE /watchlist/funds/{scheme_code}` |
 | SIP planner | `GET /planner/return-presets` · `POST /planner/sip` (projection) · `POST /planner/sip-backtest` (what would have happened) |
-| Rebalance | `POST /rebalance` · `POST /rebalance/import-holdings` (parse a broker export) |
+| Ask AI chat | `GET` / `POST /chat/conversations` · `GET` / `PATCH` / `DELETE /chat/conversations/{id}` · `POST /chat/conversations/{id}/messages` (Server-Sent Events: `status` → `card` → `answer` → `done` or `error`) |
 | Health | `GET /health` |
 
 ## Getting started
@@ -278,8 +325,8 @@ Interactive docs: **http://localhost:8000/docs** (while the backend runs). All r
 
 You don't need to install Python yourself. uv downloads the right version if it's missing.
 
-You need **at least one AI model** to get recommendations. Pick one or more. (The SIP planner and Rebalance pages
-work without any AI model.)
+You need **at least one AI model** to get recommendations. Pick one or more. (The SIP planner works without any
+AI model.)
 
 | Model | Install | How it connects |
 |---|---|---|
@@ -333,7 +380,8 @@ Open **http://localhost:5173**. Press **Ctrl+C** once to stop both.
 3. Click **Use for advice** on the model you want.
 4. Go to **Advisor**, choose stocks / mutual funds / mix, enter an amount and risk level, and click
    **Get recommendation**. It takes about 30–90 s with Claude.
-5. From the result, click **Plan a SIP with this** or **Rebalance to this** to continue in the planning tools.
+5. To plan a monthly SIP, open **SIP planner**, pick your fund(s), and see the projection or what it would have
+   returned in the past.
 
 ### Everyday commands
 
@@ -408,9 +456,8 @@ AI sees, an optional Finnhub key for extra news, and the database location.
 - **SIP projections** are a range, not a promise. Replaying the last decade (a strong market) gives optimistic results.
   Figures are before tax and not adjusted for inflation. *What would have happened* is exact for the past at real NAVs
   but assumes buying on the first business day of each month.
-- **Rebalance** uses the latest close / NAV, not live prices, and doesn't calculate your actual capital-gains tax or
-  exit loads.
-- The app **never places trades**. Recurring mode gives target percentages, and rebalance gives a trade list; you
-  invest yourself.
+- The app **never places trades**. Recurring mode gives target percentages; you invest yourself.
+- **Ask AI** answers take a few seconds per step: one model call per tool, so a question that needs three
+  lookups makes four calls. Small local Ollama models may pick the wrong tool more often than Claude or Gemini.
 - With the Claude CLI login, the model is passed as a family alias (`opus`/`sonnet`/`haiku`) so
   older Claude Code builds still work. With an API key, the exact model id is used.

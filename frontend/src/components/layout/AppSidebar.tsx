@@ -1,8 +1,10 @@
-import { Calculator, History, LineChart, Plug, Scale, ShieldAlert, Star, X, type LucideIcon } from "lucide-react";
+import { Calculator, History, LineChart, Plug, ShieldAlert, Sparkles, Star, X, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { useProviderConnections } from "../../context/ProviderConnectionsContext";
+import { Skeleton } from "../common/Skeleton";
 import { ProviderLogo } from "../connectors/ProviderLogo";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface NavItem {
   to: string;
@@ -24,7 +26,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: "Plan",
     items: [
       { to: "/planner", label: "SIP planner", icon: Calculator },
-      { to: "/rebalance", label: "Rebalance", icon: Scale },
+      { to: "/assistant", label: "Ask AI", icon: Sparkles },
     ],
   },
   {
@@ -84,6 +86,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
       </nav>
 
       <div className="sidebar__footer">
+        <ThemeToggle />
         <NavLink to="/connectors" onClick={onClose} className="active-model-chip">
           {activeStatus ? (
             <>
@@ -101,7 +104,13 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
               />
             </>
           ) : (
-            <span className="muted">Checking connectors…</span>
+            <span className="active-model-chip__loading" role="status" aria-label="Checking connectors">
+              <Skeleton width={30} height={30} radius={8} className="skeleton-block--on-dark" />
+              <span className="active-model-chip__text">
+                <Skeleton width={70} height={9} className="skeleton-block--on-dark" />
+                <Skeleton width={130} height={12} className="skeleton-block--on-dark" />
+              </span>
+            </span>
           )}
         </NavLink>
         <p className="sidebar__disclaimer">

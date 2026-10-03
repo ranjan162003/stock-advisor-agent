@@ -1,9 +1,9 @@
 """Structured per-stock data the agent reasons over (never raw price series)."""
 from __future__ import annotations
 
-from datetime import datetime
-
 from pydantic import BaseModel, Field
+
+from app.core.utc_time import UtcDatetime
 
 
 class TechnicalIndicators(BaseModel):
@@ -37,7 +37,7 @@ class FundamentalMetrics(BaseModel):
 class NewsHeadline(BaseModel):
     title: str
     publisher: str | None = None
-    published_at: datetime | None = None
+    published_at: UtcDatetime | None = None
     url: str | None = None
 
 
@@ -59,7 +59,7 @@ class StockSnapshot(BaseModel):
     technicals: TechnicalIndicators
     fundamentals: FundamentalMetrics
     headlines: list[NewsHeadline] = []
-    fetched_at: datetime
+    fetched_at: UtcDatetime
 
 
 class ScoredStockCandidate(BaseModel):

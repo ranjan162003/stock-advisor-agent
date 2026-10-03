@@ -19,8 +19,11 @@ class BaseLlmProvider(ABC):
         """Report what's installed / logged in / saved, and whether calls will work."""
 
     @abstractmethod
-    def generate_text(self, prompt: str, model_name: str | None = None) -> str:
+    def generate_text(self, prompt: str, model_name: str | None = None, json_schema: dict | None = None) -> str:
         """Send one prompt and return the raw text reply.
+
+        `json_schema` describes the JSON object the caller expects back. Providers
+        that support constrained output (Ollama) enforce it; others rely on the prompt.
 
         Raises `ProviderNotConnectedError` if nothing is configured, or
         `ProviderCallError` if the call itself fails.

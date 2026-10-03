@@ -1,11 +1,11 @@
 """Request/response contracts for generating and listing recommendations."""
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.core.utc_time import UtcDatetime
 from app.schemas.market_data_schemas import CandidateScore, NewsHeadline
 from app.schemas.mutual_fund_schemas import FundScore
 from app.schemas.provider_schemas import ProviderId
@@ -119,7 +119,7 @@ class CandidateSummary(BaseModel):
 
 class RecommendationResponse(BaseModel):
     id: int
-    created_at: datetime
+    created_at: UtcDatetime
     investment_mode: InvestmentMode
     recurring_frequency: RecurringFrequency | None
     amount: float
@@ -137,7 +137,7 @@ class RecommendationResponse(BaseModel):
 
 class RecommendationHistoryItem(BaseModel):
     id: int
-    created_at: datetime
+    created_at: UtcDatetime
     investment_mode: InvestmentMode
     recurring_frequency: RecurringFrequency | None
     amount: float
@@ -147,3 +147,25 @@ class RecommendationHistoryItem(BaseModel):
     asset_mix: AssetMix = AssetMix.STOCKS
     picked_tickers: list[str]
     picked_labels: list[str] = Field(default_factory=list)
+
+
+class HoldingPerformance(BaseModel):
+    ticker: str
+    display_name: str
+    asset_type: AssetType
+    weight_percent: float
+    price_then: float = Field(description="Share price / NAV when the recommendation was made")
+    price_now: float | None = Field(description="Latest close / NAV; None if it couldn't be fetched")
+    change_percent: float | None
+
+
+class RecommendationPerformance(BaseModel):
+    """How the recommended split has moved since it was made (prices only, before costs and taxes)."""
+
+    recommendation_id: int
+    created_at: UtcDatetime
+    checked_at: UtcDatetime
+    holdings: list[HoldingPerformance]
+    portfolio_change_percent: float | None = Field(description="Weighted by the recommended split")
+    amount: float
+    value_now: float | None = Field(description="What `amount` invested in this split would be worth now")

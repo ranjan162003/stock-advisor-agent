@@ -123,7 +123,7 @@ class ClaudeProvider(BaseLlmProvider):
 
     # ---------- generation ----------
 
-    def generate_text(self, prompt: str, model_name: str | None = None) -> str:
+    def generate_text(self, prompt: str, model_name: str | None = None, json_schema: dict | None = None) -> str:
         model = model_name or self._settings.claude_default_model
         api_key = get_api_key(self.provider_id)
         if api_key:

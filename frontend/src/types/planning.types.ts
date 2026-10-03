@@ -1,10 +1,8 @@
-// Mirrors backend/app/schemas/sip_planner_schemas.py and rebalance_schemas.py
-
-import type { AssetType } from "./recommendation.types";
+// Mirrors backend/app/schemas/sip_planner_schemas.py
 
 // ---------- SIP / goal planner ----------
 
-export type ReturnSource = "funds" | "recommendation" | "preset";
+export type ReturnSource = "funds" | "preset";
 
 export interface FundWeight {
   scheme_code: number;
@@ -25,7 +23,6 @@ export interface SipProjectionRequest {
   annual_step_up_percent: number;
   goal_amount: number | null;
   return_source: ReturnSource;
-  recommendation_id: number | null;
   preset: ReturnPreset | null;
   funds: FundWeight[];
 }
@@ -56,7 +53,6 @@ export interface SipProjectionResponse {
   basis_annual_return_percent: number;
   basis_annual_volatility_percent: number;
   history_months: number | null;
-  excluded_holdings: Record<string, string>;
   simulated_paths: number;
 }
 
@@ -103,67 +99,4 @@ export interface SipBacktestResponse {
   worst_drawdown_percent: number;
   timeline: BacktestPoint[];
   funds: BacktestFundResult[];
-}
-
-// ---------- Rebalancing ----------
-
-export interface HoldingInput {
-  symbol: string;
-  quantity: number;
-}
-
-export interface RebalanceRequest {
-  recommendation_id: number;
-  holdings: HoldingInput[];
-  additional_cash: number;
-  allow_selling: boolean;
-}
-
-export type TradeAction = "buy" | "sell" | "hold";
-
-export interface RebalanceLine {
-  ticker: string;
-  asset_type: AssetType;
-  display_name: string;
-  price: number;
-  current_quantity: number;
-  current_value: number;
-  current_weight_percent: number;
-  target_weight_percent: number;
-  action: TradeAction;
-  trade_quantity: number;
-  trade_value: number;
-  after_value: number;
-  after_weight_percent: number;
-  note: string | null;
-}
-
-export interface RebalanceResponse {
-  recommendation_id: number;
-  allow_selling: boolean;
-  current_value: number;
-  additional_cash: number;
-  total_buy: number;
-  total_sell: number;
-  cash_left_over: number;
-  value_after: number;
-  drift_before_percent: number;
-  drift_after_percent: number;
-  lines: RebalanceLine[];
-  unpriced_holdings: Record<string, string>;
-}
-
-export interface ParsedHolding {
-  input_text: string;
-  symbol: string | null;
-  display_name: string | null;
-  asset_type: AssetType | null;
-  quantity: number | null;
-  matched: boolean;
-  note: string | null;
-}
-
-export interface HoldingsImportResponse {
-  holdings: ParsedHolding[];
-  detected_columns: Record<string, string>;
 }

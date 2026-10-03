@@ -1,5 +1,6 @@
 import type {
   RecommendationHistoryItem,
+  RecommendationPerformance,
   RecommendationRequest,
   RecommendationResponse,
 } from "../types/recommendation.types";
@@ -15,6 +16,9 @@ export const recommendationApi = {
   listHistory: (limit = 50) => requestJson<RecommendationHistoryItem[]>(`/api/recommendations?limit=${limit}`),
 
   getById: (id: number) => requestJson<RecommendationResponse>(`/api/recommendations/${id}`),
+
+  getPerformance: (id: number) =>
+    requestJson<RecommendationPerformance>(`/api/recommendations/${id}/performance`),
 
   remove: (id: number) => requestJson<void>(`/api/recommendations/${id}`, { method: "DELETE" }),
 };

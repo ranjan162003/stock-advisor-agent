@@ -10,10 +10,10 @@ export function SipProjectionResults({ result }: { result: SipProjectionResponse
     <>
       <section className="card">
         <div className="stat-tiles">
-          <StatTile label="You invest" value={formatInr(result.total_invested)} hint={`over ${result.years} years`} />
-          <StatTile label="Bad case" value={formatInrCompact(result.bad_case)} hint="1 in 10 paths do worse" />
-          <StatTile label="Typical" value={formatInrCompact(result.typical)} hint={`${multiple.toFixed(1)}× your money`} tone="emphasis" />
-          <StatTile label="Good case" value={formatInrCompact(result.good_case)} hint="1 in 10 paths do better" />
+          <StatTile label="You invest" value={formatInr(result.total_invested)} countTo={result.total_invested} format={formatInr} hint={`over ${result.years} years`} />
+          <StatTile label="Bad case" value={formatInrCompact(result.bad_case)} countTo={result.bad_case} format={formatInrCompact} hint="1 in 10 paths do worse" />
+          <StatTile label="Typical" value={formatInrCompact(result.typical)} countTo={result.typical} format={formatInrCompact} hint={`${multiple.toFixed(1)}× your money`} tone="emphasis" />
+          <StatTile label="Good case" value={formatInrCompact(result.good_case)} countTo={result.good_case} format={formatInrCompact} hint="1 in 10 paths do better" />
         </div>
 
         {result.goal_amount ? (
@@ -54,11 +54,6 @@ export function SipProjectionResults({ result }: { result: SipProjectionResponse
             {result.simulated_paths.toLocaleString("en-IN")} simulated paths; {result.chance_of_loss_percent}% of them end
             below the amount invested.
           </li>
-          {Object.entries(result.excluded_holdings).map(([ticker, reason]) => (
-            <li key={ticker}>
-              Left out <code>{ticker}</code>: {reason}
-            </li>
-          ))}
         </ul>
         <p className="field__hint">
           Past returns don't guarantee future ones — a strong recent decade makes replayed projections optimistic.

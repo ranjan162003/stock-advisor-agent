@@ -1,9 +1,9 @@
 """Structured per-fund data the agent reasons over (NAV-derived metrics, not raw NAVs)."""
 from __future__ import annotations
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.utc_time import UtcDatetime
 
 
 class FundMetrics(BaseModel):
@@ -27,7 +27,7 @@ class FundSnapshot(BaseModel):
     category: str | None = None
     risk_class: int = Field(ge=1, le=5, description="1 = liquid/debt … 5 = small cap/sectoral")
     metrics: FundMetrics
-    fetched_at: datetime
+    fetched_at: UtcDatetime
 
 
 class FundScore(BaseModel):
@@ -82,4 +82,4 @@ class WatchlistFundRead(BaseModel):
     scheme_code: int
     scheme_name: str
     category: str | None
-    added_at: datetime
+    added_at: UtcDatetime

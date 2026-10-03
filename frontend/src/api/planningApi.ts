@@ -1,7 +1,4 @@
 import type {
-  HoldingsImportResponse,
-  RebalanceRequest,
-  RebalanceResponse,
   ReturnPresetInfo,
   SipBacktestRequest,
   SipBacktestResponse,
@@ -18,13 +15,4 @@ export const planningApi = {
 
   backtestSip: (request: SipBacktestRequest) =>
     requestJson<SipBacktestResponse>("/api/planner/sip-backtest", { method: "POST", body: JSON.stringify(request) }),
-
-  rebalance: (request: RebalanceRequest) =>
-    requestJson<RebalanceResponse>("/api/rebalance", { method: "POST", body: JSON.stringify(request) }),
-
-  importHoldings: (text: string) =>
-    requestJson<HoldingsImportResponse>("/api/rebalance/import-holdings", {
-      method: "POST",
-      body: JSON.stringify({ text }),
-    }),
 };

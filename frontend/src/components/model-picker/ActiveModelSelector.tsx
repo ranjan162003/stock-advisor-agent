@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { useProviderConnections } from "../../context/ProviderConnectionsContext";
 import type { ProviderId } from "../../types/provider.types";
+import { Skeleton } from "../common/Skeleton";
 import { ProviderLogo } from "../connectors/ProviderLogo";
 
 /** Compact model chooser for the Advisor page; full setup lives on the Connectors page. */
@@ -12,7 +13,15 @@ export function ActiveModelSelector() {
   const connected = providers.statuses.filter((s) => s.is_ready);
 
   if (providers.isLoading && providers.statuses.length === 0) {
-    return <p className="muted">Checking connected models…</p>;
+    return (
+      <div className="active-model" role="status" aria-label="Checking connected models">
+        <div className="active-model__providers">
+          <Skeleton height={44} radius={10} />
+          <Skeleton height={44} radius={10} />
+        </div>
+        <Skeleton height={40} radius={10} />
+      </div>
+    );
   }
 
   if (connected.length === 0) {

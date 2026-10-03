@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.database_session import get_db_session
 from app.schemas.recommendation_schemas import (
     RecommendationHistoryItem,
+    RecommendationPerformance,
     RecommendationRequest,
     RecommendationResponse,
 )
@@ -15,6 +16,7 @@ from app.services.recommendation_history_service import (
     get_recommendation_detail,
     list_recommendation_history,
 )
+from app.services.recommendation_performance_service import get_recommendation_performance
 from app.services.recommendation_service import generate_recommendation
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
@@ -39,6 +41,14 @@ def read_recommendation_history(
 @router.get("/{recommendation_id}", response_model=RecommendationResponse)
 def read_recommendation(recommendation_id: int, session: Session = Depends(get_db_session)) -> RecommendationResponse:
     return get_recommendation_detail(session, recommendation_id)
+
+
+@router.get("/{recommendation_id}/performance", response_model=RecommendationPerformance)
+def read_recommendation_performance(
+    recommendation_id: int, session: Session = Depends(get_db_session)
+) -> RecommendationPerformance:
+    """Then-vs-now prices for each holding (cached market data, refreshed every few hours)."""
+    return get_recommendation_performance(session, recommendation_id)
 
 
 @router.delete("/{recommendation_id}", status_code=status.HTTP_204_NO_CONTENT)

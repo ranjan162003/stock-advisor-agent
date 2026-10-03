@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.utc_time import UtcDatetime
 
 
 class WatchlistTickerCreate(BaseModel):
@@ -14,4 +14,4 @@ class WatchlistTickerRead(BaseModel):
 
     id: int
     ticker: str
-    added_at: datetime
+    added_at: UtcDatetime

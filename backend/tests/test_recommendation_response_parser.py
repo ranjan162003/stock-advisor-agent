@@ -56,3 +56,34 @@ def test_keeps_only_the_largest_picks_when_over_the_limit():
 def test_raises_when_nothing_usable(reply):
     with pytest.raises(RecommendationParseError):
         parse_recommendation_reply(reply, ALLOWED, max_picks=6)
+
+
+# ---- Replies from long, detailed models (seen with Claude Opus) ----
+
+from app.agent.recommendation_response_parser import escape_stray_quotes, extract_json_object  # noqa: E402
+
+
+def test_extract_ignores_prose_after_the_object_even_with_braces():
+    reply = '{"picks": [], "summary": "ok"}\n\nNote: weights sum to 100 {as requested}.'
+    assert extract_json_object(reply) == {"picks": [], "summary": "ok"}
+
+
+def test_extract_handles_unescaped_quotes_inside_strings():
+    reply = '{"summary": "Sun Pharma is the "defensive anchor" here, not a bet.", "risk_notes": ["a "b" c"]}'
+    payload = extract_json_object(reply)
+    assert payload["summary"] == 'Sun Pharma is the "defensive anchor" here, not a bet.'
+    assert payload["risk_notes"] == ['a "b" c']
+
+
+def test_extract_allows_raw_line_breaks_inside_strings():
+    assert extract_json_object('{"summary": "line one\nline two"}') == {"summary": "line one\nline two"}
+
+
+def test_extract_reports_a_cut_off_reply_clearly():
+    with pytest.raises(RecommendationParseError, match="cut off"):
+        extract_json_object('{"picks": [{"ticker": "TCS.NS", "weight_percent": 15, "ration')
+
+
+def test_escape_stray_quotes_leaves_valid_json_alone():
+    valid = '{"a": "x, y", "b": ["p", "q"], "c": {"d": "e"}}'
+    assert escape_stray_quotes(valid) == valid

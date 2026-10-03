@@ -1,5 +1,5 @@
 import type { SipBacktestResponse } from "../../types/planning.types";
-import { formatInr, formatInrCompact, formatInrPrecise, formatUnits } from "../../utils/displayFormatters";
+import { formatInr, formatInrCompact, formatInrPrecise, formatUnits, parseCalendarDate } from "../../utils/displayFormatters";
 import { StatTile } from "../common/StatTile";
 import { SipBacktestChart } from "./SipBacktestChart";
 
@@ -16,13 +16,13 @@ export function SipBacktestResults({ result }: { result: SipBacktestResponse }) 
       <section className="card">
         <p className="backtest-headline">
           {formatInr(result.monthly_amount)} every month in <strong>{fundNames}</strong> from{" "}
-          {MONTH_YEAR.format(new Date(result.start_date))} would be worth{" "}
+          {MONTH_YEAR.format(parseCalendarDate(result.start_date))} would be worth{" "}
           <strong className="backtest-headline__value">{formatInr(result.final_value)}</strong> today.
         </p>
 
         <div className="stat-tiles">
-          <StatTile label="You'd have put in" value={formatInrCompact(result.total_invested)} hint={`${result.installments} monthly instalments`} />
-          <StatTile label="Worth today" value={formatInrCompact(result.final_value)} hint={`as of ${MONTH_YEAR.format(new Date(result.end_date))}`} tone="emphasis" />
+          <StatTile label="You'd have put in" value={formatInrCompact(result.total_invested)} countTo={result.total_invested} format={formatInrCompact} hint={`${result.installments} monthly instalments`} />
+          <StatTile label="Worth today" value={formatInrCompact(result.final_value)} countTo={result.final_value} format={formatInrCompact} hint={`as of ${MONTH_YEAR.format(parseCalendarDate(result.end_date))}`} tone="emphasis" />
           <StatTile
             label="Gain"
             value={`${result.gain >= 0 ? "+" : ""}${formatInrCompact(result.gain)}`}
@@ -100,7 +100,7 @@ export function SipBacktestResults({ result }: { result: SipBacktestResponse }) 
         <h2 className="card__title">How this was calculated</h2>
         <ul>
           <li>
-            Bought units on the 1st business day of each month from {MONTH_YEAR.format(new Date(result.start_date))}, at that
+            Bought units on the 1st business day of each month from {MONTH_YEAR.format(parseCalendarDate(result.start_date))}, at that
             day's actual NAV{result.annual_step_up_percent ? `, raising the SIP ${result.annual_step_up_percent}% every year` : ""}.
           </li>
           <li>Valued at the latest NAV ({result.end_date}). Direct-plan NAVs already include the fund's expenses.</li>

@@ -1,27 +1,53 @@
-import { Calculator, Scale } from "lucide-react";
-import { Link } from "react-router-dom";
+import { FileDown, Sparkles } from "lucide-react";
 
+import { useAssistant } from "../../context/AssistantContext";
+import { usePrint } from "../../context/PrintContext";
 import type { RecommendationResponse } from "../../types/recommendation.types";
-import { formatDateTime, formatInr } from "../../utils/displayFormatters";
+import { formatDateTime, formatInr, parseTimestamp } from "../../utils/displayFormatters";
 import { ASSET_MIX_LABELS, PROVIDER_LABELS, RISK_LEVEL_LABELS, periodWord } from "../../utils/investmentLabels";
+import { PrintableDocument } from "../common/PrintableDocument";
 import { DisclaimerBanner } from "../layout/DisclaimerBanner";
 import { AgentReasoningPanel } from "./AgentReasoningPanel";
+import { AllocationDonut } from "./AllocationDonut";
 import { AllocationStackedBar } from "./AllocationStackedBar";
 import { AllocationTable } from "./AllocationTable";
 import { CandidatesConsideredTable } from "./CandidatesConsideredTable";
+import { PerformanceSincePanel } from "./PerformanceSincePanel";
 
 interface RecommendationResultsProps {
   recommendation: RecommendationResponse;
+  /** History shows how the split has done since; a brand-new result has nothing to show yet. */
+  showPerformance?: boolean;
 }
 
-export function RecommendationResults({ recommendation: rec }: RecommendationResultsProps) {
+export function RecommendationResults({ recommendation: rec, showPerformance = false }: RecommendationResultsProps) {
   const isRecurring = rec.investment_mode === "recurring";
   const period = periodWord(rec.recurring_frequency);
   const amountLabel = isRecurring ? `per ${period}` : "now";
+  const { openPanel } = useAssistant();
+  const print = usePrint();
+
+  const downloadPdf = () =>
+    print({
+      fileName: `stock-advisor-recommendation-${rec.id}-${parseTimestamp(rec.created_at).toLocaleDateString("en-CA")}`,
+      content: (
+        <PrintableDocument
+          title={`Recommendation #${rec.id}`}
+          subtitle={`${formatInr(rec.amount)} ${isRecurring ? `every ${period}` : "one-time"} · ${ASSET_MIX_LABELS[rec.asset_mix ?? "stocks"]} · ${RISK_LEVEL_LABELS[rec.risk_level]} risk · ${formatDateTime(rec.created_at)}`}
+        >
+          <RecommendationResults recommendation={rec} />
+        </PrintableDocument>
+      ),
+    });
 
   return (
     <div className="results">
       <DisclaimerBanner text={rec.disclaimer} />
+      <div className="results__toolbar no-print">
+        <button type="button" className="button button--secondary button--small" onClick={downloadPdf}>
+          <FileDown size={14} /> Download PDF
+        </button>
+      </div>
 
       <section className="card">
         <div className="results__header">
@@ -56,19 +82,12 @@ export function RecommendationResults({ recommendation: rec }: RecommendationRes
         </div>
 
         <AllocationStackedBar allocations={rec.allocations} amountLabel={amountLabel} />
+        <AllocationDonut allocations={rec.allocations} />
         <AllocationTable
           allocations={rec.allocations}
           investmentMode={rec.investment_mode}
           amountColumnLabel={isRecurring ? `This ${period}` : "Amount"}
         />
-        <div className="results__actions">
-          <Link to={`/planner?recommendation=${rec.id}`} className="button button--secondary button--small">
-            <Calculator size={14} /> Plan a SIP with this
-          </Link>
-          <Link to={`/rebalance?recommendation=${rec.id}`} className="button button--secondary button--small">
-            <Scale size={14} /> Rebalance to this
-          </Link>
-        </div>
         {isRecurring && (
           <p className="field__hint">
             Rupee amounts are for this {period}'s contribution only — keep the percentages as your target and click
@@ -77,11 +96,30 @@ export function RecommendationResults({ recommendation: rec }: RecommendationRes
         )}
       </section>
 
+      {showPerformance && <PerformanceSincePanel recommendation={rec} />}
+
+      <div className="ask-about no-print">
+        <span className="ask-about__text">
+          <Sparkles size={16} /> Questions about this result?
+        </span>
+        {ASK_ABOUT_QUESTIONS.map((question) => (
+          <button key={question} type="button" className="chat-suggestion" onClick={() => openPanel(question)}>
+            {question}
+          </button>
+        ))}
+      </div>
+
       <AgentReasoningPanel summary={rec.summary} allocations={rec.allocations} riskNotes={rec.risk_notes} />
       <CandidatesConsideredTable candidates={rec.candidates_considered} skippedTickers={rec.skipped_tickers} />
     </div>
   );
 }
+
+const ASK_ABOUT_QUESTIONS = [
+  "Explain this recommendation in simple words",
+  "What are the biggest risks here?",
+  "Why these picks over the others?",
+];
 
 /** "6 stocks", "4 funds", or "3 stocks + 2 funds". */
 function describeHoldings(rec: RecommendationResponse): string {

@@ -8,7 +8,6 @@ from __future__ import annotations
 import httpx
 
 from app.agent.providers.base_llm_provider import BaseLlmProvider
-from app.agent.recommendation_prompt_builder import REPLY_JSON_SCHEMA
 from app.core.app_exceptions import ProviderCallError, ProviderNotConnectedError
 from app.core.app_settings import get_settings
 from app.schemas.provider_schemas import AuthMethod, ProviderId, ProviderStatus
@@ -65,7 +64,7 @@ class OllamaProvider(BaseLlmProvider):
             setup_hint=None if has_models else f"Install Ollama from https://ollama.com, then run `ollama pull {self._settings.ollama_default_model}`.",
         )
 
-    def generate_text(self, prompt: str, model_name: str | None = None) -> str:
+    def generate_text(self, prompt: str, model_name: str | None = None, json_schema: dict | None = None) -> str:
         model = model_name or self.get_status().default_model
         try:
             response = httpx.post(
@@ -74,9 +73,9 @@ class OllamaProvider(BaseLlmProvider):
                     "model": model,
                     "prompt": prompt,
                     "stream": False,
-                    # Schema-constrained decoding: the reply *must* match the contract.
+                    # Schema-constrained decoding: the reply *must* match the caller's contract.
                     # (Plain `"format": "json"` lets small models loop on whitespace.)
-                    "format": REPLY_JSON_SCHEMA,
+                    "format": json_schema or "json",
                     "options": {
                         "temperature": 0.2,
                         "num_predict": OLLAMA_MAX_OUTPUT_TOKENS,

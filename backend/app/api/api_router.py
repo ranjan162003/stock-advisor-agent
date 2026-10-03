@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.routes import (
+    chat_routes,
     health_routes,
     mutual_fund_routes,
     planning_routes,
@@ -21,3 +22,4 @@ api_router.include_router(mutual_fund_routes.router)
 api_router.include_router(watchlist_routes.router)
 api_router.include_router(stock_universe_routes.router)
 api_router.include_router(planning_routes.router)
+api_router.include_router(chat_routes.router)

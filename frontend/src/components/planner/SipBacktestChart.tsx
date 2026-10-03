@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { BacktestPoint } from "../../types/planning.types";
-import { formatInr, formatInrCompact } from "../../utils/displayFormatters";
+import { formatInr, formatInrCompact, parseCalendarDate } from "../../utils/displayFormatters";
 
 const WIDTH = 720;
 const HEIGHT = 280;
@@ -34,8 +34,8 @@ export function SipBacktestChart({ points }: SipBacktestChartProps) {
   const minGap = Math.max(1, Math.round(points.length / 14));
   const yearTicks: { i: number; date: Date }[] = [];
   points.forEach((p, i) => {
-    const date = new Date(p.date);
-    const isNewYear = i === 0 || date.getFullYear() !== new Date(points[i - 1].date).getFullYear();
+    const date = parseCalendarDate(p.date);
+    const isNewYear = i === 0 || date.getFullYear() !== parseCalendarDate(points[i - 1].date).getFullYear();
     const last = yearTicks[yearTicks.length - 1];
     if (isNewYear && (!last || i - last.i >= minGap)) yearTicks.push({ i, date });
   });
@@ -97,7 +97,7 @@ export function SipBacktestChart({ points }: SipBacktestChartProps) {
             className="fan-chart__tooltip"
             style={{ left: `${(x(hoverIndex) / WIDTH) * 100}%`, top: `${(y(Math.max(active.value, active.invested)) / HEIGHT) * 100}%` }}
           >
-            <strong>{DATE_FORMAT.format(new Date(active.date))}</strong>
+            <strong>{DATE_FORMAT.format(parseCalendarDate(active.date))}</strong>
             <span>Worth {formatInr(active.value)}</span>
             <span className="muted">Invested {formatInr(active.invested)}</span>
           </div>

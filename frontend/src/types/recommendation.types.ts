@@ -110,3 +110,24 @@ export interface RecommendationHistoryItem {
   picked_tickers: string[];
   picked_labels?: string[];
 }
+
+export interface HoldingPerformance {
+  ticker: string;
+  display_name: string;
+  asset_type: AssetType;
+  weight_percent: number;
+  price_then: number;
+  price_now: number | null;
+  change_percent: number | null;
+}
+
+/** GET /recommendations/{id}/performance — prices then vs now, before costs and taxes. */
+export interface RecommendationPerformance {
+  recommendation_id: number;
+  created_at: string;
+  checked_at: string;
+  holdings: HoldingPerformance[];
+  portfolio_change_percent: number | null;
+  amount: number;
+  value_now: number | null;
+}

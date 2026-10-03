@@ -1,17 +1,20 @@
+import { Star } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import type { UniverseStock } from "../../api/stockUniverseApi";
 import type { WatchlistTicker } from "../../types/watchlist.types";
 import { shortTicker } from "../../utils/displayFormatters";
+import { EmptyState } from "../common/EmptyState";
 
 interface WatchlistManagerProps {
   watchlist: WatchlistTicker[];
   suggestions: UniverseStock[];
   onAdd: (ticker: string) => Promise<void>;
-  onRemove: (ticker: string) => Promise<void>;
+  onAddExamples: () => Promise<void>;
+  onRemove: (ticker: string) => void;
 }
 
-export function WatchlistManager({ watchlist, suggestions, onAdd, onRemove }: WatchlistManagerProps) {
+export function WatchlistManager({ watchlist, suggestions, onAdd, onAddExamples, onRemove }: WatchlistManagerProps) {
   const [tickerInput, setTickerInput] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const watched = new Set(watchlist.map((w) => w.ticker));
@@ -48,7 +51,19 @@ export function WatchlistManager({ watchlist, suggestions, onAdd, onRemove }: Wa
         <p className="field__hint">Plain symbols default to NSE (.NS). Symbols are checked when a recommendation runs.</p>
 
         {watchlist.length === 0 ? (
-          <p className="muted">Nothing here yet — add tickers above or pick from the suggestions below.</p>
+          <EmptyState
+            compact
+            icon={Star}
+            title="No stocks yet"
+            description="Add tickers above, tap a suggestion below — or start with a few popular large caps."
+            actions={
+              suggestions.length > 0 && (
+                <button type="button" className="button button--primary button--small" onClick={() => void onAddExamples()}>
+                  Try an example: add 5 popular stocks
+                </button>
+              )
+            }
+          />
         ) : (
           <ul className="chip-list">
             {watchlist.map((entry) => (
@@ -59,7 +74,7 @@ export function WatchlistManager({ watchlist, suggestions, onAdd, onRemove }: Wa
                   type="button"
                   className="chip__remove"
                   aria-label={`Remove ${entry.ticker}`}
-                  onClick={() => void onRemove(entry.ticker)}
+                  onClick={() => onRemove(entry.ticker)}
                 >
                   ×
                 </button>

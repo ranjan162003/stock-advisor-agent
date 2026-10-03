@@ -1,10 +1,11 @@
-import { Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { recommendationApi } from "../api/recommendationApi";
 import { mutualFundApi } from "../api/mutualFundApi";
 import { watchlistApi } from "../api/watchlistApi";
 import { ErrorAlert } from "../components/common/ErrorAlert";
+import { FormStep } from "../components/investment-form/FormStep";
 import {
   INITIAL_INVESTMENT_FORM_VALUES,
   InvestmentForm,
@@ -16,6 +17,7 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { ActiveModelSelector } from "../components/model-picker/ActiveModelSelector";
 import { RecommendationProgress } from "../components/recommendation/RecommendationProgress";
 import { RecommendationResults } from "../components/recommendation/RecommendationResults";
+import { useAssistantPageContext } from "../context/AssistantContext";
 import { useProviderConnections } from "../context/ProviderConnectionsContext";
 import type { ProviderId } from "../types/provider.types";
 import type { RecommendationRequest, RecommendationResponse } from "../types/recommendation.types";
@@ -32,6 +34,7 @@ export function AdvisorPage() {
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  useAssistantPageContext("advisor", recommendation?.id);
 
   useEffect(() => {
     Promise.all([watchlistApi.list(), mutualFundApi.listWatchlist()])
@@ -39,7 +42,8 @@ export function AdvisorPage() {
       .catch(() => setWatchlistCounts({ stocks: 0, funds: 0 }));
   }, []);
 
-  const validationError = validateForm(formValues, watchlistCounts);
+  const universeIssue = validateUniverse(formValues, watchlistCounts);
+  const validationError = validateAmount(formValues) ?? universeIssue;
   const blocker =
     validationError ?? (activeStatus && !activeStatus.is_ready ? "Connect an AI model to continue." : null);
   const canSubmit = !isSubmitting && !blocker && Boolean(activeStatus?.is_ready);
@@ -60,6 +64,9 @@ export function AdvisorPage() {
   };
 
   const amount = Number(formValues.amountText);
+  const completedSteps = [!universeIssue, !validateAmount(formValues), true, Boolean(activeStatus?.is_ready)].filter(
+    Boolean,
+  ).length;
 
   return (
     <div className="page">
@@ -71,11 +78,33 @@ export function AdvisorPage() {
       <DisclaimerBanner />
 
       <div className="advisor-layout">
-        <InvestmentForm values={formValues} watchlistCounts={watchlistCounts} onChange={setFormValues} />
+        <div className="form-steps">
+          <InvestmentForm
+            values={formValues}
+            watchlistCounts={watchlistCounts}
+            onChange={setFormValues}
+            universeIssue={universeIssue}
+          />
+          <FormStep
+            number={4}
+            title="AI model"
+            description="Which connected model writes the advice."
+            complete={Boolean(activeStatus?.is_ready)}
+            hasIssue={Boolean(activeStatus && !activeStatus.is_ready)}
+            isLast
+          >
+            <ActiveModelSelector />
+          </FormStep>
+        </div>
 
         <aside className="card advisor-run-panel">
-          <h2 className="card__title">AI model</h2>
-          <ActiveModelSelector />
+          <div className="card__title-row">
+            <h2 className="card__title">Your plan</h2>
+            <span className="run-progress">{completedSteps}/4 ready</span>
+          </div>
+          <div className="run-progress__track" aria-hidden="true">
+            <span style={{ width: `${(completedSteps / 4) * 100}%` }} />
+          </div>
 
           <dl className="run-summary">
             <div>
@@ -102,6 +131,19 @@ export function AdvisorPage() {
             <div>
               <dt>Choose from</dt>
               <dd>{UNIVERSE_LABELS[formValues.universeSource]}</dd>
+            </div>
+            <div className="run-summary__wide">
+              <dt>Model</dt>
+              <dd>
+                {activeStatus?.is_ready ? (
+                  <>
+                    <Check size={13} aria-hidden="true" /> {activeStatus.display_name} ·{" "}
+                    {activeModel || activeStatus.default_model}
+                  </>
+                ) : (
+                  "Not connected"
+                )}
+              </dd>
             </div>
           </dl>
 
@@ -139,9 +181,13 @@ function parseCustomTickers(text: string): string[] {
     .filter(Boolean);
 }
 
-function validateForm(values: InvestmentFormValues, watchlist: WatchlistCounts): string | null {
+function validateAmount(values: InvestmentFormValues): string | null {
   const amount = Number(values.amountText);
   if (!values.amountText || !Number.isFinite(amount) || amount <= 0) return "Enter an amount greater than ₹0.";
+  return null;
+}
+
+function validateUniverse(values: InvestmentFormValues, watchlist: WatchlistCounts): string | null {
   if (values.universeSource === "custom" && parseCustomTickers(values.customTickersText).length < 2)
     return "Enter at least 2 tickers.";
   if (values.universeSource === "watchlist") {
