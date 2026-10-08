@@ -4,15 +4,77 @@
 > education only. Data can be stale or incomplete and the model can be wrong. Any money you invest
 > based on its output is your own decision and risk.
 
-Choose **stocks, mutual funds, or a mix of both**, enter an amount (one-time or a monthly/yearly SIP)
-and a risk preference, then pick an AI model (**Claude**, **Gemini** or a local **Ollama** model).
-The agent pulls price history, fundamentals and news for Indian stocks and NAV track records for
-mutual funds, scores them, and asks the model to propose a diversified split, with its reasoning,
-the risks, and the whole shares or fund units each amount buys. A SIP planner then lets you project
-a SIP or replay one from the past, and an **Ask AI** chat assistant answers questions about your results,
-funds, stocks and SIPs using the app's real data.
+**An AI agent that turns real Indian market data into an explained stock and mutual-fund split — and then
+answers your questions about it, without making numbers up.**
 
-![React](https://img.shields.io/badge/React-Vite-blue) ![FastAPI](https://img.shields.io/badge/Python-FastAPI-green) ![uv](https://img.shields.io/badge/Python-uv-purple)
+![React](https://img.shields.io/badge/React_18-TypeScript-blue) ![FastAPI](https://img.shields.io/badge/Python-FastAPI-green) ![LLMs](https://img.shields.io/badge/LLM-Claude_·_Gemini_·_Ollama-purple) ![Tests](https://img.shields.io/badge/tests-82_passing-brightgreen)
+
+![Stock Advisor: a saved recommendation with its allocation and sector breakdown, in dark mode](docs/screenshots/11-dark-mode.png)
+
+## The problem
+
+Someone starting to invest in India runs into four problems at once:
+
+1. **Too much choice, scattered data.** There are thousands of listed stocks and 1,700+ Direct-Growth mutual
+   funds across 50 categories. Prices, fundamentals, news and fund NAV histories all live on different sites.
+2. **Advice without reasons.** Tips on social media and most robo-advisors say *what* to buy, not *why*, and
+   rarely say what could go wrong.
+3. **Calculators that hide risk.** A typical SIP calculator assumes a fixed 12% a year and shows one big
+   number, as if markets never fall.
+4. **Chatbots that invent numbers.** Ask a general AI chatbot how a fund has done and it will often answer
+   confidently with figures that are out of date or simply made up.
+
+## The solution
+
+Stock Advisor is a full-stack app (React + FastAPI) built around an AI agent that **only reasons over data it
+has fetched itself**:
+
+| Problem | How the app solves it |
+|---|---|
+| Too much choice, scattered data | The backend pulls a year of prices, fundamentals and news for each stock (Yahoo Finance) and full NAV history for each fund (mfapi.in). It computes returns, RSI, volatility, drawdown, CAGR and Sharpe ratio, then **pre-scores every candidate with transparent rules** for your risk level and shortlists the best before the AI sees them. |
+| Advice without reasons | The AI model (Claude, Gemini or a local Ollama model) picks 2–6 holdings and must justify each one with the numbers. The app shows the reasoning, the **risks**, and every candidate it **rejected** with its score. History then tracks **how each recommendation has done since**. |
+| Calculators that hide risk | The SIP planner runs **4,000 simulated market paths** on a fund's real monthly returns and shows a **bad / typical / good** range, plus your chance of hitting a goal. *What would have happened* replays a real past SIP month by month at actual NAVs, with XIRR and a fixed-deposit comparison. |
+| Chatbots that invent numbers | The **Ask AI** assistant has to use tools — search funds, fund and stock details, compare funds, run the SIP maths, read your saved recommendations — and the app shows each result as a card next to the answer. Every figure it quotes comes from a tool result. |
+
+It also runs the way an individual would want: pick your model and sign in with your browser or an API key
+(stored in the OS keychain), or stay fully offline with Ollama. Results can be downloaded as PDF, and the UI
+works in light and dark mode and on phones.
+
+## Screenshots
+
+| | |
+|---|---|
+| **1. Plan the investment** — four steps and a live summary. ![Advisor form](docs/screenshots/01-advisor.png) | **2. The agent at work** — live progress while it fetches data, scores candidates and asks the model. ![Agent progress](docs/screenshots/02-agent-at-work.png) |
+| **3. The recommended split** — allocation bar, holdings-and-sectors donut, and what each amount buys. ![Recommendation](docs/screenshots/03-recommendation.png) | **4. Why, and what could go wrong** — short reasoning per pick and the key risks. ![Reasoning](docs/screenshots/05-reasoning.png) |
+| **5. How it has done since** — each holding's price then vs now. ![Since this recommendation](docs/screenshots/04-since-recommendation.png) | **6. Ask AI, grounded in real data** — the comparison card comes from a tool call, not the model's memory. ![Ask AI](docs/screenshots/07-ask-ai.png) |
+| **7. SIP projection as a range** — 4,000 simulated paths on the fund's real history. ![SIP projection](docs/screenshots/08-sip-projection.png) | **8. Replay a real past SIP** — month by month at actual NAVs, with XIRR vs a fixed deposit. ![SIP replay](docs/screenshots/09-sip-replay.png) |
+| **9. Bring your own model** — Claude, Gemini or local Ollama; browser login or API key. ![Agent connectors](docs/screenshots/10-connectors.png) | **10. Ask AI while it works** — live status as each tool runs. ![Ask AI working](docs/screenshots/06-ask-ai-working.png) |
+
+**On a phone** — bottom tab bar, full-screen chat, dark mode:
+
+![Phone screens: Advisor, History and Ask AI](docs/screenshots/12-mobile.png)
+
+## Engineering highlights
+
+What was hard, and how it was solved:
+
+- **One agent, three very different LLMs.** Claude, Gemini and Ollama expose different features, so the chat
+  assistant doesn't rely on any vendor's tool-calling API. On each step the model replies with one small JSON
+  message — "call this tool" or "here's the answer" — and the backend runs the tool. Ollama gets a JSON
+  schema to constrain its output; the others follow the prompt.
+- **LLMs don't always return valid JSON.** Long, detailed replies sometimes contain quotes inside strings, a
+  note after the JSON, or a line break in the middle of a value. The parser tolerates all of these, detects
+  replies that were cut off, and asks the model to repair its answer once before giving up.
+- **Live progress instead of a frozen screen.** Agent turns take 30–90 seconds, so the chat streams its status
+  ("Searching funds…"), cards and answer over Server-Sent Events as they happen.
+- **Realistic SIP maths.** Projections resample 12-month blocks of a fund's real returns (a block bootstrap),
+  which keeps the clustered ups and downs a fixed-rate calculator misses. XIRR is solved numerically.
+- **Fast, forgiving fund search.** All Indian funds are downloaded daily from AMFI into SQLite and an in-memory
+  index, so search works as you type and understands abbreviations and old names (`ppfas` → Parag Parikh,
+  `bluechip` → Large Cap).
+- **Tested end to end.** 82 pytest tests cover the indicators, scoring, SIP maths, the reply parser, the chat
+  tool loop and the full API with fake market data and a fake model. UI changes were checked in a real
+  browser with Playwright.
 
 ## Features
 
@@ -289,6 +351,8 @@ stock-advisor-agent/
 │       │   └── watchlist/                  WatchlistManager (stocks) · FundWatchlistManager
 │       ├── utils/                          displayFormatters (₹, %, units) · investmentLabels
 │       └── styles/global.css               Design tokens, light/dark themes, animations
+│
+├── docs/screenshots/                       Images used in this README
 │
 └── scripts/                                Dev tooling (run everything from here)
     ├── setup.mjs                           npm run setup: checks tools, installs everything
