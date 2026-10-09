@@ -7,12 +7,13 @@ from app.agent.providers.base_llm_provider import BaseLlmProvider
 from app.agent.providers.claude_provider import ClaudeProvider
 from app.agent.providers.gemini_provider import GeminiProvider
 from app.agent.providers.ollama_provider import OllamaProvider
+from app.agent.providers.opencode_provider import OpencodeProvider
 from app.schemas.provider_schemas import ProviderId
 
 
 @lru_cache
 def _all_providers() -> dict[ProviderId, BaseLlmProvider]:
-    providers: list[BaseLlmProvider] = [ClaudeProvider(), GeminiProvider(), OllamaProvider()]
+    providers: list[BaseLlmProvider] = [ClaudeProvider(), GeminiProvider(), OllamaProvider(), OpencodeProvider()]
     return {provider.provider_id: provider for provider in providers}
 
 
