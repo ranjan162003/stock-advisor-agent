@@ -10,6 +10,7 @@ class ProviderId(str, Enum):
     CLAUDE = "claude"
     GEMINI = "gemini"
     OLLAMA = "ollama"
+    OPENCODE = "opencode"
 
 
 class AuthMethod(str, Enum):

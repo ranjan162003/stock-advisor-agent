@@ -1,6 +1,6 @@
 // Mirrors backend/app/schemas/provider_schemas.py
 
-export type ProviderId = "claude" | "gemini" | "ollama";
+export type ProviderId = "claude" | "gemini" | "ollama" | "opencode";
 
 export type AuthMethod = "cli_login" | "api_key" | "local_server";
 
