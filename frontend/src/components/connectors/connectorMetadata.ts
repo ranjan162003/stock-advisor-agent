@@ -30,4 +30,10 @@ export const CONNECTOR_METADATA: Record<ProviderId, ConnectorMetadata> = {
     browserLoginDescription: "",
     installCommand: "ollama pull llama3.1",
   },
+  opencode: {
+    vendor: "OpenCode",
+    browserLoginLabel: "Connect a model",
+    browserLoginDescription: "Opens OpenCode's login in a terminal — connect any provider it supports (including a local llama.cpp server), then click 'Check status'.",
+    installCommand: "npm install -g opencode-ai",
+  },
 };

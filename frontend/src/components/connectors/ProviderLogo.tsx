@@ -17,6 +17,7 @@ export function ProviderLogo({ providerId, size = 40 }: ProviderLogoProps) {
         {providerId === "claude" && <ClaudeMark />}
         {providerId === "gemini" && <GeminiMark />}
         {providerId === "ollama" && <OllamaMark />}
+        {providerId === "opencode" && <OpenCodeMark />}
       </svg>
     </span>
   );
@@ -70,6 +71,17 @@ function OllamaMark() {
       <ellipse cx="12" cy="17" rx="2.6" ry="1.9" />
       <circle cx="9.6" cy="13" r="0.5" fill="currentColor" />
       <circle cx="14.4" cy="13" r="0.5" fill="currentColor" />
+    </g>
+  );
+}
+
+function OpenCodeMark() {
+  // Terminal window with a prompt.
+  return (
+    <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="4" width="19" height="16" rx="3" />
+      <path d="M6.5 9.5l3 2.5-3 2.5" />
+      <path d="M13 14.5h4.5" />
     </g>
   );
 }

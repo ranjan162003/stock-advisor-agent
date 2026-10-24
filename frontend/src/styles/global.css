@@ -1264,6 +1264,11 @@ details[open] > .card__title--summary {
   color: var(--surface);
 }
 
+.provider-logo--opencode {
+  background: var(--text-primary);
+  color: var(--surface);
+}
+
 .pill.pill--active {
   display: inline-flex;
   align-items: center;

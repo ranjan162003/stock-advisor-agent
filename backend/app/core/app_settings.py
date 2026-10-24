@@ -48,6 +48,9 @@ class AppSettings(BaseSettings):
     gemini_default_model: str = "gemini-2.5-flash"
     ollama_base_url: str = "http://localhost:11434"
     ollama_default_model: str = "llama3.1"
+    # Blank: fall back to the first model `opencode models` reports.
+    opencode_default_model: str = ""
+    opencode_timeout_seconds: int = 600
 
 
 @lru_cache

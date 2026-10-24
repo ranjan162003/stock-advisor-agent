@@ -75,7 +75,7 @@ export function useProviderConnections(): ProviderConnectionsValue {
 
 function readStoredProvider(): ProviderId {
   const stored = readStorage(ACTIVE_PROVIDER_STORAGE_KEY);
-  return stored === "claude" || stored === "gemini" || stored === "ollama" ? stored : "claude";
+  return stored === "claude" || stored === "gemini" || stored === "ollama" || stored === "opencode" ? stored : "claude";
 }
 
 // Storage can be unavailable (private mode, blocked site data) — the choice just isn't remembered then.

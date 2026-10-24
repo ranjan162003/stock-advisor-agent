@@ -14,6 +14,7 @@ export const PROVIDER_LABELS: Record<ProviderId, string> = {
   claude: "Claude",
   gemini: "Gemini",
   ollama: "Ollama",
+  opencode: "OpenCode",
 };
 
 export function describeInvestmentMode(mode: InvestmentMode, frequency: RecurringFrequency | null): string {

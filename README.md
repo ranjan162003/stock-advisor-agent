@@ -227,6 +227,7 @@ Open **Agent connectors** in the sidebar. Each model has its own card:
 | Claude | Opens Claude's sign-in in your browser and uses your Claude.ai plan (needs [Claude Code](https://claude.com/claude-code)) | Paste an Anthropic API key |
 | Gemini | Opens Google sign-in and uses your free-tier quota (needs the `gemini` CLI) | Paste a Google AI Studio API key |
 | Ollama | No login: runs on your machine with `ollama serve` and a pulled model | — |
+| OpenCode | Connect any provider it supports in a terminal (`opencode auth login`), including a local llama.cpp server | — |
 
 API keys go into your **OS credential vault** (Windows Credential Manager / macOS Keychain via
 `keyring`). They're never written to a file and are never returned by the API.
@@ -287,6 +288,7 @@ stock-advisor-agent/
 │   │   │       ├── claude_provider.py      Claude Code CLI login or Anthropic API key
 │   │   │       ├── gemini_provider.py      Gemini CLI Google login or API key
 │   │   │       ├── ollama_provider.py      Local Ollama server (schema-constrained JSON)
+│   │   │       ├── opencode_provider.py    Any model via the OpenCode CLI (e.g. local llama.cpp)
 │   │   │       ├── cli_process_runner.py   Run vendor CLIs / open login terminals
 │   │   │       └── llm_provider_registry.py
 │   │   ├── assistant/                      Ask-AI chat agent:
@@ -397,6 +399,7 @@ AI model.)
 | **Claude** (recommended) | [Claude Code](https://claude.com/claude-code): `npm install -g @anthropic-ai/claude-code` | Browser login with your Claude.ai account, or an API key |
 | **Gemini** | `npm install -g @google/gemini-cli` | Browser login with your Google account, or an API key |
 | **Ollama** (free, offline) | https://ollama.com, then `ollama pull llama3.1` | Runs locally with no login. Slow without a GPU (several minutes per recommendation) |
+| **OpenCode** | `npm install -g opencode-ai` (or https://opencode.ai) | Runs any model OpenCode is configured with, e.g. a local llama.cpp server (`opencode models` lists them) |
 
 ### 2. Install the project (once, and again after pulling new changes)
 
